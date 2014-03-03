@@ -1,0 +1,21 @@
+{
+  "name": "Durandal",
+  "version": "2.0.1",
+  "dependencies": {
+    "jquery": "1.9.1",
+    "requirejs": "2.1.8",
+    "requirejs-text": "2.0.3",
+    "knockout.js": "2.3.0"
+  },
+  "homepage": "https://github.com/BlueSpire/Durandal-Bower",
+  "_release": "2.0.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "2.0.1",
+    "commit": "040c54dd24efabe0312eac3d898cb6242680ebdd"
+  },
+  "_source": "git://github.com/BlueSpire/Durandal-Bower.git",
+  "_target": "~2.0.1",
+  "_originalSource": "durandal",
+  "_direct": true
+}

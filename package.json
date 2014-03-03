@@ -1,0 +1,24 @@
+{
+  "name": "gulp-test",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "gulp": "^3.5.5",
+    "gulp-nodeunit": "0.0.3",
+    "gulp-jshint": "^1.5.0",
+    "gulp-clean": "^0.2.4",
+    "gulp-load-plugins": "^0.3.0",
+    "gulp-print": "^1.0.3",
+    "gulp-run-sequence": "^0.3.2"
+  },
+  "dependencies": {
+    "lodash": "^2.4.1",
+    "requirejs": "^2.1.11",
+    "glob": "^3.2.9",
+    "event-stream": "^3.1.0",
+    "gulp-util": "^2.2.14"
+  }
+}
