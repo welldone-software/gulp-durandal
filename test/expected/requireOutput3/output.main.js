@@ -12266,139 +12266,350 @@ requirejs.config({
         'bootstrap': {
             deps: ['jquery'],
             exports: 'jQuery'
-       }
+        }
     }
 });
 
 define('main',['durandal/system', 'durandal/app', 'durandal/viewLocator'],  function (system, app, viewLocator) {
     
-    app.title = 'Durandal Starter Kit';
+    app.title = 'Durandal Samples';
 
+    //specify which plugins to install and their configuration
     app.configurePlugins({
         router:true,
         dialog: true,
-        widget: true
+        widget: {
+            kinds: ['expander']
+        }
     });
 
-    app.start().then(function() {
+    app.start().then(function () {
         //Replace 'viewmodels' in the moduleId with 'views' to locate the view.
         //Look for partial views in a 'views' folder in the root.
         viewLocator.useConvention();
 
-        //Show the app by setting the root view model for our application with a transition.
-        app.setRoot('viewmodels/shell', 'entrance');
+        //Show the app by setting the root view model for our application.
+        app.setRoot('shell');
     });
 });
-/**
- * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
- * Available via the MIT license.
- * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
- */
-/**
- * Enables common http request scenarios.
- * @module http
- * @requires jquery
- * @requires knockout
- */
-define('plugins/http',['jquery', 'knockout'], function($, ko) {
-    /**
-     * @class HTTPModule
-     * @static
-     */
+define('eventAggregator/publisher',['durandal/app', 'knockout'], function (app, ko) {
+    var message = ko.observable();
+    var canPublish = ko.computed(function () {
+        return message() ? true : false;
+    });
+
     return {
-        /**
-         * The name of the callback parameter to inject into jsonp requests by default.
-         * @property {string} callbackParam
-         * @default callback
-         */
-        callbackParam:'callback',
-        /**
-         * Makes an HTTP GET request.
-         * @method get
-         * @param {string} url The url to send the get request to.
-         * @param {object} [query] An optional key/value object to transform into query string parameters.
-         * @return {Promise} A promise of the get response data.
-         */
-        get:function(url, query) {
-            return $.ajax(url, { data: query });
-        },
-        /**
-         * Makes an JSONP request.
-         * @method jsonp
-         * @param {string} url The url to send the get request to.
-         * @param {object} [query] An optional key/value object to transform into query string parameters.
-         * @param {string} [callbackParam] The name of the callback parameter the api expects (overrides the default callbackParam).
-         * @return {Promise} A promise of the response data.
-         */
-        jsonp: function (url, query, callbackParam) {
-            if (url.indexOf('=?') == -1) {
-                callbackParam = callbackParam || this.callbackParam;
-
-                if (url.indexOf('?') == -1) {
-                    url += '?';
-                } else {
-                    url += '&';
-                }
-
-                url += callbackParam + '=?';
-            }
-
-            return $.ajax({
-                url: url,
-                dataType:'jsonp',
-                data:query
-            });
-        },
-        /**
-         * Makes an HTTP POST request.
-         * @method post
-         * @param {string} url The url to send the post request to.
-         * @param {object} data The data to post. It will be converted to JSON. If the data contains Knockout observables, they will be converted into normal properties before serialization.
-         * @return {Promise} A promise of the response data.
-         */
-        post:function(url, data) {
-            return $.ajax({
-                url: url,
-                data: ko.toJSON(data),
-                type: 'POST',
-                contentType: 'application/json',
-                dataType: 'json'
-            });
+        message: message,
+        canPublish:canPublish,
+        publish: function () {
+            app.trigger('sample:event', message());
         }
     };
 });
-
-define('viewmodels/flickr',['plugins/http', 'durandal/app', 'knockout'], function (http, app, ko) {
-    //Note: This module exports an object.
-    //That means that every module that "requires" it will get the same object instance.
-    //If you wish to be able to create multiple instances, instead export a function.
-    //See the "welcome" module for an example of function export.
-
+define('eventAggregator/subscriber',['durandal/app', 'knockout'], function (app, ko) {
     return {
-        displayName: 'Flickr',
-        images: ko.observableArray([]),
-        activate: function () {
-            //the router's activator calls this function and waits for it to complete before proceding
-            if (this.images().length > 0) {
-                return;
-            }
+        received: ko.observableArray([]),
+        subscription:ko.observable(),
+        subscribe: function () {
+            var sub = app.on('sample:event').then(function(message) {
+                this.received.push(message);
+            }, this);
 
-            var that = this;
-            return http.jsonp('http://api.flickr.com/services/feeds/photos_public.gne', { tags: 'mount ranier', tagmode: 'any', format: 'json' }, 'jsoncallback').then(function(response) {
-                that.images(response.items);
-            });
+            this.subscription(sub);
         },
-        select: function(item) {
-            //the app model allows easy display of modal dialogs by passing a view model
-            //views are usually located by convention, but you an specify it as well with viewUrl
-            item.viewUrl = 'views/detail';
-            app.showDialog(item);
-        },
-        canDeactivate: function () {
-            //the router's activator calls this function to see if it can leave the screen
-            return app.showMessage('Are you sure you want to leave this page?', 'Navigate', ['Yes', 'No']);
+        unsubscribe: function () {
+            this.subscription().off();
+            this.subscription(null);
         }
     };
+});
+define('eventAggregator/index',['./publisher', './subscriber'], function (publisher, subscriber) {
+    return {
+        publisher:publisher,
+        subscriber: subscriber
+    };
+});
+define('hello/index',['durandal/app', 'durandal/system', 'knockout'], function (app, system, ko) {
+    var name = ko.observable();
+    var canSayHello = ko.computed(function () {
+        return name() ? true : false;
+    });
+
+    return {
+        displayName: 'What is your name?',
+        name: name,
+        sayHello: function() {
+            app.showMessage('Hello ' + name() + '!', 'Greetings');
+        },
+        canSayHello: canSayHello,
+        activate: function() {
+            system.log('Lifecycle : activate : hello');
+        },
+        binding: function () {
+            system.log('Lifecycle : binding : hello');
+            return { cacheViews:false }; //cancels view caching for this module, allowing the triggering of the detached callback
+        },
+        bindingComplete: function () {
+            system.log('Lifecycle : bindingComplete : hello');
+        },
+        attached: function (view, parent) {
+            system.log('Lifecycle : attached : hello');
+        },
+        compositionComplete: function (view) {
+            system.log('Lifecycle : compositionComplete : hello');
+        },
+        detached: function (view) {
+            system.log('Lifecycle : detached : hello');
+        }
+    };
+});
+define('ko/animatedTrans/index',['jquery', 'knockout'], function ($, ko) {
+    // Here's a custom Knockout binding that makes elements shown/hidden via jQuery's fadeIn()/fadeOut() methods
+    // Could be stored in a separate utility library
+    ko.bindingHandlers.fadeVisible = {
+        init: function (element, valueAccessor) {
+            // Initially set the element to be instantly visible/hidden depending on the value
+            var value = valueAccessor();
+            $(element).toggle(ko.utils.unwrapObservable(value)); // Use "unwrapObservable" so we can handle values that may or may not be observable
+        },
+        update: function (element, valueAccessor) {
+            // Whenever the value subsequently changes, slowly fade the element in or out
+            var value = valueAccessor();
+            ko.utils.unwrapObservable(value) ? $(element).fadeIn() : $(element).fadeOut();
+        }
+    };
+
+    var planets = ko.observableArray([
+        { name: "Mercury", type: "rock" },
+        { name: "Venus", type: "rock" },
+        { name: "Earth", type: "rock" },
+        { name: "Mars", type: "rock" },
+        { name: "Jupiter", type: "gasgiant" },
+        { name: "Saturn", type: "gasgiant" },
+        { name: "Uranus", type: "gasgiant" },
+        { name: "Neptune", type: "gasgiant" },
+        { name: "Pluto", type: "rock" }
+    ]);
+
+    var typeToShow = ko.observable("all");
+
+    var displayAdvancedOptions = ko.observable(false);
+
+    var addPlanet = function (type) {
+        planets.push({
+            name: "New planet",
+            type: type
+        });
+    };
+
+    var planetsToShow = ko.computed(function () {
+        // Represents a filtered list of planets
+        // i.e., only those matching the "typeToShow" condition
+        var desiredType = typeToShow();
+        if (desiredType == "all") return planets();
+        return ko.utils.arrayFilter(planets(), function (planet) {
+            return planet.type == desiredType;
+        });
+    });
+
+    var showPlanetElement = function (elem) { if (elem.nodeType === 1) $(elem).hide().slideDown() }
+    var hidePlanetElement = function (elem) { if (elem.nodeType === 1) $(elem).slideUp(function () { $(elem).remove(); }) }
+
+    return {
+        planets: planets,
+        typeToShow: typeToShow,
+        displayAdvancedOptions: displayAdvancedOptions,
+        addPlanet: addPlanet,
+        planetsToShow: planetsToShow,
+        showPlanetElement: showPlanetElement,
+        hidePlanetElement: hidePlanetElement
+    }
+});
+define('ko/betterList/index',['knockout'], function (ko) {
+    var itemToAdd = ko.observable("");
+    var allItems = ko.observableArray(["Fries", "Eggs Benedict", "Ham", "Cheese"]); // Initial items
+    var selectedItems = ko.observableArray(["Ham"]);                                // Initial selection
+
+    var addItem = function () {
+        if ((itemToAdd() != "") && (allItems.indexOf(itemToAdd()) < 0)) // Prevent blanks and duplicates
+            allItems.push(itemToAdd());
+        itemToAdd(""); // Clear the text box
+    };
+
+    var removeSelected = function () {
+        allItems.removeAll(selectedItems());
+        selectedItems([]); // Clear selection
+    };
+
+    var sortItems = function () {
+        allItems.sort();
+    };
+
+    return {
+        itemToAdd: itemToAdd,
+        allItems: allItems,
+        selectedItems: selectedItems,
+        addItem: addItem,
+        removeSelected: removeSelected,
+        sortItems: sortItems
+    }
+});
+define('ko/clickCounter/index',['knockout'], function (ko) {
+    var counter = ko.observable(0);
+    var limiter = ko.computed(function () {
+        return counter() >= 3;
+    });
+
+    var om = {
+        numberOfClicks: counter,
+        hasClickedTooManyTimes: limiter,
+        registerClick: function () {
+            counter(counter() + 1);
+        },
+        resetClicks: function () {
+            counter(0);
+        }
+    }
+
+    return om;
+});
+define('ko/collections/index',['durandal/system', 'knockout'], function(system, ko) {
+    // Define a "Person" class that tracks its own name and children, and has a method to add a new child
+    var Person = function (name, children) {
+        this.name = name;
+        this.children = ko.observableArray(children);
+
+        this.addChild = function () {
+            this.children.push("New child");
+        }.bind(this);
+    }
+
+    // The view model is an abstract description of the state of the UI, but without any knowledge of the UI technology (HTML)
+    return {
+        people : [
+            new Person("Annabelle", ["Arnie", "Anders", "Apple"]),
+            new Person("Bertie", ["Boutros-Boutros", "Brianna", "Barbie", "Bee-bop"]),
+            new Person("Charles", ["Cayenne", "Cleopatra"])
+        ],
+        showRenderTimes : ko.observable(false)
+    }
+});
+define('ko/contactsEditor/index',['durandal/system', 'jquery', 'knockout'], function(system, $, ko) {
+    var initialData = [
+      {
+          firstName: "Danny", lastName: "LaRusso", phones: [
+            { type: "Mobile", number: "(555) 121-2121" },
+            { type: "Home", number: "(555) 123-4567" }]
+      },
+      {
+          firstName: "Sensei", lastName: "Miyagi", phones: [
+            { type: "Mobile", number: "(555) 444-2222" },
+            { type: "Home", number: "(555) 999-1212" }]
+      }
+    ];
+
+    var ContactsModel = function (contacts) {
+        var self = this;
+        self.contacts = ko.observableArray(ko.utils.arrayMap(contacts, function (contact) {
+            return { firstName: contact.firstName, lastName: contact.lastName, phones: ko.observableArray(contact.phones) };
+        }));
+
+        self.addContact = function () {
+            self.contacts.push({
+                firstName: "",
+                lastName: "",
+                phones: ko.observableArray()
+            });
+        };
+
+        self.removeContact = function (contact) {
+            self.contacts.remove(contact);
+        };
+
+        self.addPhone = function (contact) {
+            contact.phones.push({
+                type: "",
+                number: ""
+            });
+        };
+
+        self.removePhone = function (phone) {
+            $.each(self.contacts(), function () { this.phones.remove(phone) })
+        };
+
+        self.save = function () {
+            self.lastSavedJson(JSON.stringify(ko.toJS(self.contacts), null, 2));
+        };
+
+        self.lastSavedJson = ko.observable("")
+    };
+
+    return {
+        ContactsModel : new ContactsModel(initialData)
+    }
+});
+define('ko/controlTypes/index',['knockout'], function (ko) {
+    return {
+        stringValue: ko.observable("Hello"),
+        passwordValue: ko.observable("mypass"),
+        booleanValue: ko.observable(true),
+        optionValues: ["Alpha", "Beta", "Gamma"],
+        selectedOptionValue: ko.observable("Gamma"),
+        multipleSelectedOptionValues: ko.observable(["Alpha"]),
+        radioSelectedOptionValue: ko.observable("Beta")
+    }
+});
+
+define('ko/gridEditor/index',['durandal/system', 'durandal/app', 'jquery', 'knockout'], function(system, app, $, ko) {
+    var GiftModel = function (gifts) {
+        var self = this;
+        self.gifts = ko.observableArray(gifts);
+
+        self.addGift = function () {
+            self.gifts.push({
+                name: "",
+                price: ""
+            });
+        };
+
+        self.removeGift = function (gift) {
+            self.gifts.remove(gift);
+        };
+
+        self.save = function (form) {
+            //alert("Could now transmit to server: ");
+            app.showMessage('You could now send this to server: <br/>' + ko.utils.stringifyJson(self.gifts), 'Grid Editor - Results');
+            // To actually transmit to server as a regular form post, write this: ko.utils.postJson($("form")[0], self.gifts);
+        };
+    };
+
+    var vm = {
+        GiftModel: new GiftModel([{ name: "Tall Hat", price: "39.95" }, { name: "Long Cloak", price: "120.00" }]),
+        doSubmit: doSubmit
+    }
+
+    function doSubmit() {
+        vm.GiftModel.save();
+        // default form behavior in Knockout
+        return false;
+    }
+
+    return vm;
+});
+define('ko/helloWorld/index',['knockout'], function (ko) {
+    var firstName = ko.observable("Planet");
+    var lastName = ko.observable("Earth");
+
+    var fullName = ko.computed(function () {
+        // Knockout tracks dependencies automatically. It knows that fullName depends on firstName and lastName, because these get called when evaluating fullName.
+        return firstName() + " " + lastName();
+    });
+
+    return  {
+        firstName: firstName,
+        lastName: lastName,
+        fullName: fullName
+    }
 });
 /**
  * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
@@ -13685,246 +13896,857 @@ define('plugins/router',['durandal/system', 'durandal/app', 'durandal/activator'
     return rootRouter;
 });
 
-define('viewmodels/shell',['plugins/router', 'durandal/app'], function (router, app) {
+define('ko/index',['plugins/router', 'knockout'], function(router, ko) {
+    var childRouter = router.createChildRouter()
+        .makeRelative({
+            moduleId:'ko',
+            fromParent:true
+        }).map([
+            { route: ['', 'helloWorld'],    moduleId: 'helloWorld/index',       title: 'Hello World',           type: 'intro',      nav: true },
+            { route: 'clickCounter',        moduleId: 'clickCounter/index',     title: 'Click Counter',         type: 'intro',      nav: true },
+            { route: 'simpleList',          moduleId: 'simpleList/index',       title: 'Simple List',           type: 'intro',      nav: true },
+            { route: 'betterList',          moduleId: 'betterList/index',       title: 'Better List',           type: 'intro',      nav: true },
+            { route: 'controlTypes',        moduleId: 'controlTypes/index',     title: 'Control Types',         type: 'intro',      nav: true },
+            { route: 'collections',         moduleId: 'collections/index',      title: 'Collection',            type: 'intro' ,     nav: true },
+            { route: 'pagedGrid',           moduleId: 'pagedGrid/index',        title: 'Paged Grid',            type: 'intro',      nav: true },
+            { route: 'animatedTrans',       moduleId: 'animatedTrans/index',    title: 'Animated Transition',   type: 'intro',      nav: true },
+            { route: 'contactsEditor',      moduleId: 'contactsEditor/index',   title: 'Contacts Editor',       type: 'detailed',   nav: true },
+            { route: 'gridEditor',          moduleId: 'gridEditor/index',       title: 'Grid Editor',           type: 'detailed',   nav: true },
+            { route: 'shoppingCart',        moduleId: 'shoppingCart/index',     title: 'Shopping Cart',         type: 'detailed',   nav: true },
+            { route: 'twitterClient',       moduleId: 'twitterClient/index',    title: 'Twitter Client',        type: 'detailed',   nav: true }
+        ]).buildNavigationModel();
+
     return {
-        router: router,
-        search: function() {
-            //It's really easy to show a message box.
-            //You can add custom options too. Also, it returns a promise for the user's response.
-            app.showMessage('Search not yet implemented...');
-        },
-        activate: function () {
-            router.map([
-                { route: '', title:'Welcome', moduleId: 'viewmodels/welcome', nav: true },
-                { route: 'flickr', moduleId: 'viewmodels/flickr', nav: true }
-            ]).buildNavigationModel();
-            
-            return router.activate();
-        }
+        router: childRouter,
+        introSamples: ko.computed(function() {
+            return ko.utils.arrayFilter(childRouter.navigationModel(), function(route) {
+                return route.type == 'intro';
+            });
+        }),
+        detailedSamples: ko.computed(function() {
+            return ko.utils.arrayFilter(childRouter.navigationModel(), function(route) {
+                return route.type == 'detailed';
+            });
+        })
     };
 });
-define('viewmodels/welcome',[],function() {
-    var ctor = function () {
-        this.displayName = 'Welcome to the Durandal Starter Kit!';
-        this.description = 'Durandal is a cross-device, cross-platform client framework written in JavaScript and designed to make Single Page Applications (SPAs) easy to create and maintain.';
-        this.features = [
-            'Clean MV* Architecture',
-            'JS & HTML Modularity',
-            'Simple App Lifecycle',
-            'Eventing, Modals, Message Boxes, etc.',
-            'Navigation & Screen State Management',
-            'Consistent Async Programming w/ Promises',
-            'App Bundling and Optimization',
-            'Use any Backend Technology',
-            'Built on top of jQuery, Knockout & RequireJS',
-            'Integrates with other libraries such as SammyJS & Bootstrap',
-            'Make jQuery & Bootstrap widgets templatable and bindable (or build your own widgets).'
-        ];
+define('ko/pagedGrid/simpleGrid',['knockout'], function(ko) {
+    var SimpleGrid = function (configuration) {
+        this.data = configuration.data;
+        this.currentPageIndex = ko.observable(0);
+        this.pageSize = configuration.pageSize || 5;
+
+        // If you don't specify columns configuration, we'll use scaffolding
+        this.columns = configuration.columns || getColumnsForScaffolding(ko.utils.unwrapObservable(this.data));
+
+        this.itemsOnCurrentPage = ko.computed(function() {
+            var startIndex = this.pageSize * this.currentPageIndex();
+            return this.data.slice(startIndex, startIndex + this.pageSize);
+        }, this);
+
+        this.maxPageIndex = ko.computed(function() {
+            return Math.ceil(ko.utils.unwrapObservable(this.data).length / this.pageSize) - 1;
+        }, this);
     };
 
-    //Note: This module exports a function. That means that you, the developer, can create multiple instances.
-    //This pattern is also recognized by Durandal so that it can create instances on demand.
-    //If you wish to create a singleton, you should export an object instead of a function.
-    //See the "flickr" module for an example of object export.
+    SimpleGrid.prototype.getColumnsForScaffolding = function(data) {
+        if ((typeof data.length !== 'number') || data.length === 0) {
+            return [];
+        }
+        var columns = [];
+        for (var propertyName in data[0]) {
+            columns.push({ headerText: propertyName, rowText: propertyName });
+        }
+        return columns;
+    };
+
+    return SimpleGrid;
+});
+define('ko/pagedGrid/index',['durandal/system', 'durandal/app', './simpleGrid', 'knockout'], function(system, app, SimpleGrid, ko) {
+    var initialData = [
+        { name: "Well-Travelled Kitten", sales: 352, price: 75.95 },
+        { name: "Speedy Coyote", sales: 89, price: 190.00 },
+        { name: "Furious Lizard", sales: 152, price: 25.00 },
+        { name: "Indifferent Monkey", sales: 1, price: 99.95 },
+        { name: "Brooding Dragon", sales: 0, price: 6350 },
+        { name: "Ingenious Tadpole", sales: 39450, price: 0.35 },
+        { name: "Optimistic Snail", sales: 420, price: 1.50 }
+    ];
+
+    var items = ko.observableArray(initialData);
+    var gridViewModel = new SimpleGrid({
+        data: items,
+        columns: [
+            { headerText: "Item Name", rowText: "name" },
+            { headerText: "Sales Count", rowText: "sales" },
+            { headerText: "Price", rowText: function (item) { return "$" + item.price.toFixed(2); } }
+        ],
+        pageSize: 4
+    });
+
+    var addItem = function() {
+        items.push({ name: "New item", sales: 0, price: 100 });
+    };
+
+    var sortByName = function() {
+        items.sort(function(a, b) {
+            return a.name < b.name ? -1 : 1;
+        });
+    };
+
+    var jumpToFirstPage = function() {
+        gridViewModel.currentPageIndex(0);
+    };
+
+    return {
+        items: items,
+        addItem: addItem,
+        sortByName: sortByName,
+        jumpToFirstPage: jumpToFirstPage,
+        gridViewModel: gridViewModel,
+        SimpleGrid: SimpleGrid
+    };
+});
+define('ko/shoppingCart/sampleProductCategories',[],function() {
+    // Some of the Knockout examples use this data
+    return sampleProductCategories = [
+      {
+          "products": [
+            {
+                "name": "1948 Porsche 356-A Roadster",
+                "price": 53.9
+            },
+            {
+                "name": "1948 Porsche Type 356 Roadster",
+                "price": 62.16
+            },
+            {
+                "name": "1949 Jaguar XK 120",
+                "price": 47.25
+            },
+            {
+                "name": "1952 Alpine Renault 1300",
+                "price": 98.58
+            },
+            {
+                "name": "1952 Citroen-15CV",
+                "price": 72.82
+            },
+            {
+                "name": "1956 Porsche 356A Coupe",
+                "price": 98.3
+            },
+            {
+                "name": "1957 Corvette Convertible",
+                "price": 69.93
+            },
+            {
+                "name": "1957 Ford Thunderbird",
+                "price": 34.21
+            },
+            {
+                "name": "1958 Chevy Corvette Limited Edition",
+                "price": 15.91
+            },
+            {
+                "name": "1961 Chevrolet Impala",
+                "price": 32.33
+            },
+            {
+                "name": "1962 LanciaA Delta 16V",
+                "price": 103.42
+            },
+            {
+                "name": "1965 Aston Martin DB5",
+                "price": 65.96
+            },
+            {
+                "name": "1966 Shelby Cobra 427 S/C",
+                "price": 29.18
+            },
+            {
+                "name": "1968 Dodge Charger",
+                "price": 75.16
+            },
+            {
+                "name": "1968 Ford Mustang",
+                "price": 95.34
+            },
+            {
+                "name": "1969 Chevrolet Camaro Z28",
+                "price": 50.51
+            },
+            {
+                "name": "1969 Corvair Monza",
+                "price": 89.14
+            },
+            {
+                "name": "1969 Dodge Charger",
+                "price": 58.73
+            },
+            {
+                "name": "1969 Dodge Super Bee",
+                "price": 49.05
+            },
+            {
+                "name": "1969 Ford Falcon",
+                "price": 83.05
+            },
+            {
+                "name": "1970 Chevy Chevelle SS 454",
+                "price": 49.24
+            },
+            {
+                "name": "1970 Dodge Coronet",
+                "price": 32.37
+            },
+            {
+                "name": "1970 Plymouth Hemi Cuda",
+                "price": 31.92
+            },
+            {
+                "name": "1970 Triumph Spitfire",
+                "price": 91.92
+            },
+            {
+                "name": "1971 Alpine Renault 1600s",
+                "price": 38.58
+            },
+            {
+                "name": "1972 Alfa Romeo GTA",
+                "price": 85.68
+            },
+            {
+                "name": "1976 Ford Gran Torino",
+                "price": 73.49
+            },
+            {
+                "name": "1982 Camaro Z28",
+                "price": 46.53
+            },
+            {
+                "name": "1982 Lamborghini Diablo",
+                "price": 16.24
+            },
+            {
+                "name": "1985 Toyota Supra",
+                "price": 57.01
+            },
+            {
+                "name": "1992 Ferrari 360 Spider red",
+                "price": 77.9
+            },
+            {
+                "name": "1992 Porsche Cayenne Turbo Silver",
+                "price": 69.78
+            },
+            {
+                "name": "1993 Mazda RX-7",
+                "price": 83.51
+            },
+            {
+                "name": "1995 Honda Civic",
+                "price": 93.89
+            },
+            {
+                "name": "1998 Chrysler Plymouth Prowler",
+                "price": 101.51
+            },
+            {
+                "name": "1999 Indy 500 Monte Carlo SS",
+                "price": 56.76
+            },
+            {
+                "name": "2001 Ferrari Enzo",
+                "price": 95.59
+            },
+            {
+                "name": "2002 Chevy Corvette",
+                "price": 62.11
+            }
+          ],
+          "name": "Classic Cars"
+      },
+      {
+          "products": [
+            {
+                "name": "1936 Harley Davidson El Knucklehead",
+                "price": 24.23
+            },
+            {
+                "name": "1957 Vespa GS150",
+                "price": 32.95
+            },
+            {
+                "name": "1960 BSA Gold Star DBD34",
+                "price": 37.32
+            },
+            {
+                "name": "1969 Harley Davidson Ultimate Chopper",
+                "price": 48.81
+            },
+            {
+                "name": "1974 Ducati 350 Mk3 Desmo",
+                "price": 56.13
+            },
+            {
+                "name": "1982 Ducati 900 Monster",
+                "price": 47.1
+            },
+            {
+                "name": "1982 Ducati 996 R",
+                "price": 24.14
+            },
+            {
+                "name": "1996 Moto Guzzi 1100i",
+                "price": 68.99
+            },
+            {
+                "name": "1997 BMW F650 ST",
+                "price": 66.92
+            },
+            {
+                "name": "1997 BMW R 1100 S",
+                "price": 60.86
+            },
+            {
+                "name": "2002 Suzuki XREO",
+                "price": 66.27
+            },
+            {
+                "name": "2002 Yamaha YZR M1",
+                "price": 34.17
+            },
+            {
+                "name": "2003 Harley-Davidson Eagle Drag Bike",
+                "price": 91.02
+            }
+          ],
+          "name": "Motorcycles"
+      },
+      {
+          "products": [
+            {
+                "name": "1900s Vintage Bi-Plane",
+                "price": 34.25
+            },
+            {
+                "name": "1900s Vintage Tri-Plane",
+                "price": 36.23
+            },
+            {
+                "name": "1928 British Royal Navy Airplane",
+                "price": 66.74
+            },
+            {
+                "name": "1980s Black Hawk Helicopter",
+                "price": 77.27
+            },
+            {
+                "name": "ATA: B757-300",
+                "price": 59.33
+            },
+            {
+                "name": "America West Airlines B757-200",
+                "price": 68.8
+            },
+            {
+                "name": "American Airlines: B767-300",
+                "price": 51.15
+            },
+            {
+                "name": "American Airlines: MD-11S",
+                "price": 36.27
+            },
+            {
+                "name": "Boeing X-32A JSF",
+                "price": 32.77
+            },
+            {
+                "name": "Corsair F4U ( Bird Cage)",
+                "price": 29.34
+            },
+            {
+                "name": "F/A 18 Hornet 1/72",
+                "price": 54.4
+            },
+            {
+                "name": "P-51-D Mustang",
+                "price": 49.0
+            }
+          ],
+          "name": "Planes"
+      },
+      {
+          "products": [
+            {
+                "name": "18th century schooner",
+                "price": 82.34
+            },
+            {
+                "name": "1999 Yamaha Speed Boat",
+                "price": 51.61
+            },
+            {
+                "name": "HMS Bounty",
+                "price": 39.83
+            },
+            {
+                "name": "Pont Yacht",
+                "price": 33.3
+            },
+            {
+                "name": "The Mayflower",
+                "price": 43.3
+            },
+            {
+                "name": "The Queen Mary",
+                "price": 53.63
+            },
+            {
+                "name": "The Schooner Bluenose",
+                "price": 34.0
+            },
+            {
+                "name": "The Titanic",
+                "price": 51.09
+            },
+            {
+                "name": "The USS Constitution Ship",
+                "price": 33.97
+            }
+          ],
+          "name": "Ships"
+      },
+      {
+          "products": [
+            {
+                "name": "1950's Chicago Surface Lines Streetcar",
+                "price": 26.72
+            },
+            {
+                "name": "1962 City of Detroit Streetcar",
+                "price": 37.49
+            },
+            {
+                "name": "Collectable Wooden Train",
+                "price": 67.56
+            }
+          ],
+          "name": "Trains"
+      },
+      {
+          "products": [
+            {
+                "name": "1926 Ford Fire Engine",
+                "price": 24.92
+            },
+            {
+                "name": "1940 Ford Pickup Truck",
+                "price": 58.33
+            },
+            {
+                "name": "1940s Ford truck",
+                "price": 84.76
+            },
+            {
+                "name": "1954 Greyhound Scenicruiser",
+                "price": 25.98
+            },
+            {
+                "name": "1957 Chevy Pickup",
+                "price": 55.7
+            },
+            {
+                "name": "1958 Setra Bus",
+                "price": 77.9
+            },
+            {
+                "name": "1962 Volkswagen Microbus",
+                "price": 61.34
+            },
+            {
+                "name": "1964 Mercedes Tour Bus",
+                "price": 74.86
+            },
+            {
+                "name": "1980â€™s GM Manhattan Express",
+                "price": 53.93
+            },
+            {
+                "name": "1996 Peterbilt 379 Stake Bed with Outrigger",
+                "price": 33.61
+            },
+            {
+                "name": "Diamond T620 Semi-Skirted Tanker",
+                "price": 68.29
+            }
+          ],
+          "name": "Trucks and Buses"
+      },
+      {
+          "products": [
+            {
+                "name": "18th Century Vintage Horse Carriage",
+                "price": 60.74
+            },
+            {
+                "name": "1903 Ford Model A",
+                "price": 68.3
+            },
+            {
+                "name": "1904 Buick Runabout",
+                "price": 52.66
+            },
+            {
+                "name": "1911 Ford Town Car",
+                "price": 33.3
+            },
+            {
+                "name": "1912 Ford Model T Delivery Wagon",
+                "price": 46.91
+            },
+            {
+                "name": "1913 Ford Model T Speedster",
+                "price": 60.78
+            },
+            {
+                "name": "1917 Grand Touring Sedan",
+                "price": 86.7
+            },
+            {
+                "name": "1917 Maxwell Touring Car",
+                "price": 57.54
+            },
+            {
+                "name": "1928 Ford Phaeton Deluxe",
+                "price": 33.02
+            },
+            {
+                "name": "1928 Mercedes-Benz SSK",
+                "price": 72.56
+            },
+            {
+                "name": "1930 Buick Marquette Phaeton",
+                "price": 27.06
+            },
+            {
+                "name": "1932 Alfa Romeo 8C2300 Spider Sport",
+                "price": 43.26
+            },
+            {
+                "name": "1932 Model A Ford J-Coupe",
+                "price": 58.48
+            },
+            {
+                "name": "1934 Ford V8 Coupe",
+                "price": 34.35
+            },
+            {
+                "name": "1936 Chrysler Airflow",
+                "price": 57.46
+            },
+            {
+                "name": "1936 Mercedes Benz 500k Roadster",
+                "price": 21.75
+            },
+            {
+                "name": "1936 Mercedes-Benz 500K Special Roadster",
+                "price": 24.26
+            },
+            {
+                "name": "1937 Horch 930V Limousine",
+                "price": 26.3
+            },
+            {
+                "name": "1937 Lincoln Berline",
+                "price": 60.62
+            },
+            {
+                "name": "1938 Cadillac V-16 Presidential Limousine",
+                "price": 20.61
+            },
+            {
+                "name": "1939 Cadillac Limousine",
+                "price": 23.14
+            },
+            {
+                "name": "1939 Chevrolet Deluxe Coupe",
+                "price": 22.57
+            },
+            {
+                "name": "1940 Ford Delivery Sedan",
+                "price": 48.64
+            },
+            {
+                "name": "1941 Chevrolet Special Deluxe Cabriolet",
+                "price": 64.58
+            }
+          ],
+          "name": "Vintage Cars"
+      }
+    ];
+});
+define('ko/shoppingCart/index',['durandal/system', 'durandal/app', './sampleProductCategories', 'jquery', 'knockout'], function (system, app, sampleProductCategories, $, ko) {
+    function formatCurrency(value) {
+        return "$" + value.toFixed(2);
+    };
+
+    var CartLine = function () {
+        var self = this;
+        self.category = ko.observable();
+        self.product = ko.observable();
+        self.quantity = ko.observable(1);
+        self.subtotal = ko.computed(function () {
+            return self.product() ? self.product().price * parseInt("0" + self.quantity(), 10) : 0;
+        });
+
+        // Whenever the category changes, reset the product selection
+        self.category.subscribe(function () {
+            self.product(undefined);
+        });
+    };
+
+    var Cart = function () {
+        // Stores an array of lines, and from these, can work out the grandTotal
+        var self = this;
+        self.lines = ko.observableArray([new CartLine()]); // Put one line in by default
+        self.grandTotal = ko.computed(function () {
+            var total = 0;
+            $.each(self.lines(), function () { total += this.subtotal() })
+            return total;
+        });
+
+        // Operations
+        self.addLine = function () {
+            self.lines.push(new CartLine())
+        };
+        self.removeLine = function (line) {
+            self.lines.remove(line)
+        };
+        self.save = function () {
+            var dataToSave = $.map(self.lines(), function (line) {
+                return line.product() ? {
+                    productName: line.product().name,
+                    quantity: line.quantity()
+                } : undefined
+            });
+            //alert("Could now send this to server: " + JSON.stringify(dataToSave));
+            app.showMessage('You could now send this to server: <br/>' + JSON.stringify(dataToSave),'Your Shopping Cart');
+        };
+    };
+
+    return {
+        Cart: new Cart(),
+        formatCurrency : formatCurrency,
+        sampleProductCategories: sampleProductCategories
+    };
+});
+define('ko/simpleList/index',['knockout'], function (ko) {
+    var initialData = ["Alpha", "Beta", "Gamma"];
+    var items = ko.observableArray(initialData);
+    var itemToAdd = ko.observable("");
+
+    var addItem = function () {
+        if (itemToAdd() != "") {
+            items.push(itemToAdd()); // Adds the item. Writing to the "items" observableArray causes any associated UI to update.
+            itemToAdd(""); // Clears the text box, because it's bound to the "itemToAdd" observable
+        };
+    };
+
+    return  {
+        items: items,
+        itemToAdd: itemToAdd,
+        addItem: addItem
+    }
+});
+define('ko/twitterClient/index',['durandal/system', 'jquery', 'knockout'], function (system, $, ko) {
+    var initialLists = [
+            { name: "SPA Advocates", userNames: ['DurandalJS','John_Papa','EisenbergEffect','wardbell','DanWahlin', 'mikekidder',] },
+            { name: "Celebrities", userNames: ['JohnCleese', 'MCHammer', 'StephenFry', 'algore', 'StevenSanderson'] },
+            { name: "Microsoft people", userNames: ['BillGates', 'shanselman', 'ScottGu'] },
+            { name: "Tech pundits", userNames: ['Scobleizer', 'LeoLaporte', 'techcrunch', 'BoingBoing', 'timoreilly', 'codinghorror'] }
+    ];
+
+    var selectedList = "SPA Advocates";
+
+    var twitterApi = (function () {
+        var throttleFunction = function (fn, throttleMilliseconds) {
+            var invocationTimeout;
+
+            return function () {
+                var args = arguments;
+                if (invocationTimeout)
+                    clearTimeout(invocationTimeout);
+
+                invocationTimeout = setTimeout(function () {
+                    invocationTimeout = null;
+                    fn.apply(window, args);
+                }, throttleMilliseconds);
+            };
+        };
+
+        var getTweetsForUsersThrottled = throttleFunction(function (userNames, callback) {
+            if (userNames.length == 0)
+                callback([]);
+            else {
+                var url = "http://search.twitter.com/search.json?callback=?&rpp=100&q=";
+                for (var i = 0; i < userNames.length; i++)
+                    url += "from:" + userNames[i] + (i < userNames.length - 1 ? " OR " : "");
+                $.ajax({
+                    url: url,
+                    dataType: "jsonp",
+                    success: function (data) { callback($.grep(data.results || [], function (tweet) { return !tweet.to_user_id; })); }
+                });
+            }
+        }, 50);
+
+        return {
+            getTweetsForUser: function (userName, callback) {
+                return this.getTweetsForUsers([userName], callback);
+            },
+            getTweetsForUsers: function (userNames, callback) {
+                return getTweetsForUsersThrottled(userNames, callback);
+            }
+        };
+    })();
+
+    var savedLists = ko.observableArray(initialLists);
+
+    var editingList = {
+        name: ko.observable(selectedList),
+        userNames: ko.observableArray()
+    };
+
+    var userNameToAdd = ko.observable("");
+
+    var currentTweets = ko.observableArray([])
+
+    var findSavedList = function (name) {
+        var lists = savedLists();
+        return ko.utils.arrayFirst(lists, function (list) {
+            return list.name === name;
+        });
+    };
+
+    var addUser = function () {
+        if (userNameToAdd() && userNameToAddIsValid()) {
+            editingList.userNames.push(userNameToAdd());
+            userNameToAdd("");
+        }
+    };
+
+    var removeUser = function (userName) {
+        editingList.userNames.remove(userName)
+    };
+
+    var saveChanges = function () {
+        var saveAs = prompt("Save as", editingList.name());
+        if (saveAs) {
+            var dataToSave = editingList.userNames().slice(0);
+            var existingSavedList = findSavedList(saveAs);
+            if (existingSavedList) existingSavedList.userNames = dataToSave; // Overwrite existing list
+            else savedLists.push({
+                name: saveAs,
+                userNames: dataToSave
+            }); // Add new list
+            editingList.name(saveAs);
+        }
+    };
+
+    var deleteList = function () {
+        var nameToDelete = editingList.name();
+        var savedListsExceptOneToDelete = $.grep(savedLists(), function (list) {
+            return list.name != nameToDelete
+        });
+        editingList.name(savedListsExceptOneToDelete.length == 0 ? null : savedListsExceptOneToDelete[0].name);
+        savedLists(savedListsExceptOneToDelete);
+    };
+
+    var hasUnsavedChanges = ko.computed(function () {
+        if (!editingList.name()) {
+            return editingList.userNames().length > 0;
+        }
+        var savedData = findSavedList(editingList.name()).userNames;
+        var editingData = editingList.userNames();
+        return savedData.join("|") != editingData.join("|");
+    });
+
+    var userNameToAddIsValid = ko.computed(function () {
+        return (userNameToAdd() == "") || (userNameToAdd().match(/^\s*[a-zA-Z0-9_]{1,15}\s*$/) != null);
+    });
+
+    var canAddUserName = ko.computed(function () {
+        return userNameToAddIsValid() && userNameToAdd() != "";
+    });
+
+    // The active user tweets are (asynchronously) computed from editingList.userNames
+    ko.computed(function () {
+        twitterApi.getTweetsForUsers(editingList.userNames(), currentTweets);
+    });
+
+    ko.computed(function () {
+        // Observe viewModel.editingList.name(), so when it changes (i.e., user selects a different list) we know to copy the saved list into the editing list
+        var savedList = findSavedList(editingList.name());
+        if (savedList) {
+            var userNamesCopy = savedList.userNames.slice(0);
+            editingList.userNames(userNamesCopy);
+        } else {
+            editingList.userNames([]);
+        }
+    });
+
+    return {
+        savedLists : savedLists,
+        editingList : editingList,
+        userNameToAdd : userNameToAdd,
+        currentTweets : currentTweets,
+        findSavedList : findSavedList,
+        addUser : addUser,
+        removeUser : removeUser,
+        saveChanges : saveChanges,
+        deleteList : deleteList,
+        hasUnsavedChanges : hasUnsavedChanges,
+        userNameToAddIsValid : userNameToAddIsValid,
+        canAddUserName: canAddUserName
+    }
+});
+define('masterDetail/project',['durandal/system', 'durandal/app'], function(system, app) {
+    var ctor = function(name, description) {
+        this.name = name;
+        this.description = description;
+    };
+    
+    ctor.prototype.canActivate = function () {
+        return app.showMessage('Do you want to view ' + this.name + '?', 'Master Detail', ['Yes', 'No']);
+    };
+
+    ctor.prototype.activate = function() {
+        system.log('Model Activating', this);
+    };
+
+    ctor.prototype.canDeactivate = function () {
+        return app.showMessage('Do you want to leave ' + this.name + '?', 'Master Detail', ['Yes', 'No']);
+    };
+
+    ctor.prototype.deactivate = function () {
+        system.log('Model Deactivating', this);
+    };
 
     return ctor;
 });
-/**
- * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
- * Available via the MIT license.
- * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
- */
-/**
- * Layers the widget sugar on top of the composition system.
- * @module widget
- * @requires system
- * @requires composition
- * @requires jquery
- * @requires knockout
- */
-define('plugins/widget',['durandal/system', 'durandal/composition', 'jquery', 'knockout'], function(system, composition, $, ko) {
-    var kindModuleMaps = {},
-        kindViewMaps = {},
-        bindableSettings = ['model', 'view', 'kind'],
-        widgetDataKey = 'durandal-widget-data';
+define('masterDetail/index',['./project', 'durandal/activator', 'knockout'], function (Project, activator, ko) {
+    var projects = ko.observableArray([
+        new Project('Durandal', 'A cross-device, cross-platform application framework written in JavaScript, Durandal is a very small amount of code built on top of three existing and established Javascript libraries: jQuery, Knockout and RequireJS.'),
+        new Project('UnityDatabinding', 'A general databinding framework for Unity3D. Includes bindings for UI composition and samples for the NGUI library.'),
+        new Project('Caliburn.Micro', 'Caliburn.Micro is a small, yet powerful framework, designed for building applications across all Xaml Platforms. With strong support for MVVM and other proven UI patterns, Caliburn.Micro will enable you to build your solution quickly, without the need to sacrifice code quality or testability.')
+    ]);
 
-    function extractParts(element, settings){
-        var data = ko.utils.domData.get(element, widgetDataKey);
-
-        if(!data){
-            data = {
-                parts:composition.cloneNodes(ko.virtualElements.childNodes(element))
-            };
-
-            ko.virtualElements.emptyNode(element);
-            ko.utils.domData.set(element, widgetDataKey, data);
-        }
-
-        settings.parts = data.parts;
-    }
-
-    /**
-     * @class WidgetModule
-     * @static
-     */
-    var widget = {
-        getSettings: function(valueAccessor) {
-            var settings = ko.utils.unwrapObservable(valueAccessor()) || {};
-
-            if (system.isString(settings)) {
-                return { kind: settings };
-            }
-
-            for (var attrName in settings) {
-                if (ko.utils.arrayIndexOf(bindableSettings, attrName) != -1) {
-                    settings[attrName] = ko.utils.unwrapObservable(settings[attrName]);
-                } else {
-                    settings[attrName] = settings[attrName];
-                }
-            }
-
-            return settings;
-        },
-        /**
-         * Creates a ko binding handler for the specified kind.
-         * @method registerKind
-         * @param {string} kind The kind to create a custom binding handler for.
-         */
-        registerKind: function(kind) {
-            ko.bindingHandlers[kind] = {
-                init: function() {
-                    return { controlsDescendantBindings: true };
-                },
-                update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
-                    var settings = widget.getSettings(valueAccessor);
-                    settings.kind = kind;
-                    extractParts(element, settings);
-                    widget.create(element, settings, bindingContext, true);
-                }
-            };
-
-            ko.virtualElements.allowedBindings[kind] = true;
-            composition.composeBindings.push(kind + ':');
-        },
-        /**
-         * Maps views and module to the kind identifier if a non-standard pattern is desired.
-         * @method mapKind
-         * @param {string} kind The kind name.
-         * @param {string} [viewId] The unconventional view id to map the kind to.
-         * @param {string} [moduleId] The unconventional module id to map the kind to.
-         */
-        mapKind: function(kind, viewId, moduleId) {
-            if (viewId) {
-                kindViewMaps[kind] = viewId;
-            }
-
-            if (moduleId) {
-                kindModuleMaps[kind] = moduleId;
-            }
-        },
-        /**
-         * Maps a kind name to it's module id. First it looks up a custom mapped kind, then falls back to `convertKindToModulePath`.
-         * @method mapKindToModuleId
-         * @param {string} kind The kind name.
-         * @return {string} The module id.
-         */
-        mapKindToModuleId: function(kind) {
-            return kindModuleMaps[kind] || widget.convertKindToModulePath(kind);
-        },
-        /**
-         * Converts a kind name to it's module path. Used to conventionally map kinds who aren't explicitly mapped through `mapKind`.
-         * @method convertKindToModulePath
-         * @param {string} kind The kind name.
-         * @return {string} The module path.
-         */
-        convertKindToModulePath: function(kind) {
-            return 'widgets/' + kind + '/viewmodel';
-        },
-        /**
-         * Maps a kind name to it's view id. First it looks up a custom mapped kind, then falls back to `convertKindToViewPath`.
-         * @method mapKindToViewId
-         * @param {string} kind The kind name.
-         * @return {string} The view id.
-         */
-        mapKindToViewId: function(kind) {
-            return kindViewMaps[kind] || widget.convertKindToViewPath(kind);
-        },
-        /**
-         * Converts a kind name to it's view id. Used to conventionally map kinds who aren't explicitly mapped through `mapKind`.
-         * @method convertKindToViewPath
-         * @param {string} kind The kind name.
-         * @return {string} The view id.
-         */
-        convertKindToViewPath: function(kind) {
-            return 'widgets/' + kind + '/view';
-        },
-        createCompositionSettings: function(element, settings) {
-            if (!settings.model) {
-                settings.model = this.mapKindToModuleId(settings.kind);
-            }
-
-            if (!settings.view) {
-                settings.view = this.mapKindToViewId(settings.kind);
-            }
-
-            settings.preserveContext = true;
-            settings.activate = true;
-            settings.activationData = settings;
-            settings.mode = 'templated';
-
-            return settings;
-        },
-        /**
-         * Creates a widget.
-         * @method create
-         * @param {DOMElement} element The DOMElement or knockout virtual element that serves as the target element for the widget.
-         * @param {object} settings The widget settings.
-         * @param {object} [bindingContext] The current binding context.
-         */
-        create: function(element, settings, bindingContext, fromBinding) {
-            if(!fromBinding){
-                settings = widget.getSettings(function() { return settings; }, element);
-            }
-
-            var compositionSettings = widget.createCompositionSettings(element, settings);
-
-            composition.compose(element, compositionSettings, bindingContext);
-        },
-        /**
-         * Installs the widget module by adding the widget binding handler and optionally registering kinds.
-         * @method install
-         * @param {object} config The module config. Add a `kinds` array with the names of widgets to automatically register. You can also specify a `bindingName` if you wish to use another name for the widget binding, such as "control" for example.
-         */
-        install:function(config){
-            config.bindingName = config.bindingName || 'widget';
-
-            if(config.kinds){
-                var toRegister = config.kinds;
-
-                for(var i = 0; i < toRegister.length; i++){
-                    widget.registerKind(toRegister[i]);
-                }
-            }
-
-            ko.bindingHandlers[config.bindingName] = {
-                init: function() {
-                    return { controlsDescendantBindings: true };
-                },
-                update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
-                    var settings = widget.getSettings(valueAccessor);
-                    extractParts(element, settings);
-                    widget.create(element, settings, bindingContext, true);
-                }
-            };
-
-            composition.composeBindings.push(config.bindingName + ':');
-            ko.virtualElements.allowedBindings[config.bindingName] = true;
-        }
+    return {
+        projects: projects,
+        activeProject: activator.create().forItems(projects)
     };
-
-    return widget;
 });
-
 /**
  * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
  * Available via the MIT license.
@@ -14365,6 +15187,305 @@ define('plugins/dialog',['durandal/system', 'durandal/app', 'durandal/compositio
     return dialog;
 });
 
+define('modal/customModal',['plugins/dialog', 'knockout'], function (dialog, ko) {
+    var CustomModal = function() {
+        this.input = ko.observable('');
+    };
+
+    CustomModal.prototype.ok = function() {
+        dialog.close(this, this.input());
+    };
+
+    CustomModal.prototype.canDeactivate = function () {
+        return dialog.showMessage('Are you sure that\'s your favorite color?', 'Just Checking...', ['Yes', 'No']);
+    };
+
+    CustomModal.show = function(){
+        return dialog.show(new CustomModal());
+    };
+
+    return CustomModal;
+});
+define('modal/index',['durandal/app', './customModal'], function (app, CustomModal) {
+    return {
+        showCustomModal: function() {
+            CustomModal.show().then(function(response) {
+                app.showMessage('You answered "' + response + '".');
+            });
+        }
+    };
+});
+define('shell',['plugins/router'], function (router) {
+    return {
+        router: router,
+        activate: function () {
+            return router.map([
+                { route: ['', 'home'],                  moduleId: 'hello/index',            title: 'Hello World',       nav: 1 },
+                { route: 'view-composition',            moduleId: 'viewComposition/index',  title: 'View Composition',  nav: true },
+                { route: 'modal',                       moduleId: 'modal/index',            title: 'Modal Dialogs',     nav: 3 },
+                { route: 'event-aggregator',            moduleId: 'eventAggregator/index',  title: 'Events',            nav: 2 },
+                { route: 'widgets',                     moduleId: 'widgets/index',          title: 'Widgets',           nav: true },
+                { route: 'master-detail',               moduleId: 'masterDetail/index',     title: 'Master Detail',     nav: true },
+                { route: 'knockout-samples*details',    moduleId: 'ko/index',               title: 'Knockout Samples',  nav: true, hash: '#knockout-samples' }
+            ]).buildNavigationModel()
+              .mapUnknownRoutes('hello/index', 'not-found')
+              .activate();
+        }
+    };
+});
+define('viewComposition/index',[],function() {
+    return {
+        propertyOne: 'This is a databound property from the root context.',
+        propertyTwo: 'This property demonstrates that binding contexts flow through composed views.'
+    };
+});
+define('viewComposition/inlineModule',[],function(){
+    return {
+        someProperty:'This is being bound against an inline view.'
+    };
+});
+define('widgets/expander/viewmodel',['durandal/composition','jquery'], function(composition, $) {
+    var ctor = function() { };
+
+    ctor.prototype.activate = function(settings) {
+        this.settings = settings;
+    };
+
+    ctor.prototype.getHeaderText = function(item) {
+        if (this.settings.headerProperty) {
+            return item[this.settings.headerProperty];
+        }
+
+        return item.toString();
+    };
+
+    ctor.prototype.afterRenderItem = function(elements, item) {
+        var parts = composition.getParts(elements);
+        var $itemContainer = $(parts.itemContainer);
+
+        $itemContainer.hide();
+
+        $(parts.headerContainer).bind('click', function() {
+            $itemContainer.toggle('fast');
+        });
+    };
+
+    return ctor;
+});
+define('widgets/project',[],function() {
+    return function(name, description) {
+        this.name = name;
+        this.description = description;
+    };
+});
+/**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * Layers the widget sugar on top of the composition system.
+ * @module widget
+ * @requires system
+ * @requires composition
+ * @requires jquery
+ * @requires knockout
+ */
+define('plugins/widget',['durandal/system', 'durandal/composition', 'jquery', 'knockout'], function(system, composition, $, ko) {
+    var kindModuleMaps = {},
+        kindViewMaps = {},
+        bindableSettings = ['model', 'view', 'kind'],
+        widgetDataKey = 'durandal-widget-data';
+
+    function extractParts(element, settings){
+        var data = ko.utils.domData.get(element, widgetDataKey);
+
+        if(!data){
+            data = {
+                parts:composition.cloneNodes(ko.virtualElements.childNodes(element))
+            };
+
+            ko.virtualElements.emptyNode(element);
+            ko.utils.domData.set(element, widgetDataKey, data);
+        }
+
+        settings.parts = data.parts;
+    }
+
+    /**
+     * @class WidgetModule
+     * @static
+     */
+    var widget = {
+        getSettings: function(valueAccessor) {
+            var settings = ko.utils.unwrapObservable(valueAccessor()) || {};
+
+            if (system.isString(settings)) {
+                return { kind: settings };
+            }
+
+            for (var attrName in settings) {
+                if (ko.utils.arrayIndexOf(bindableSettings, attrName) != -1) {
+                    settings[attrName] = ko.utils.unwrapObservable(settings[attrName]);
+                } else {
+                    settings[attrName] = settings[attrName];
+                }
+            }
+
+            return settings;
+        },
+        /**
+         * Creates a ko binding handler for the specified kind.
+         * @method registerKind
+         * @param {string} kind The kind to create a custom binding handler for.
+         */
+        registerKind: function(kind) {
+            ko.bindingHandlers[kind] = {
+                init: function() {
+                    return { controlsDescendantBindings: true };
+                },
+                update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    var settings = widget.getSettings(valueAccessor);
+                    settings.kind = kind;
+                    extractParts(element, settings);
+                    widget.create(element, settings, bindingContext, true);
+                }
+            };
+
+            ko.virtualElements.allowedBindings[kind] = true;
+            composition.composeBindings.push(kind + ':');
+        },
+        /**
+         * Maps views and module to the kind identifier if a non-standard pattern is desired.
+         * @method mapKind
+         * @param {string} kind The kind name.
+         * @param {string} [viewId] The unconventional view id to map the kind to.
+         * @param {string} [moduleId] The unconventional module id to map the kind to.
+         */
+        mapKind: function(kind, viewId, moduleId) {
+            if (viewId) {
+                kindViewMaps[kind] = viewId;
+            }
+
+            if (moduleId) {
+                kindModuleMaps[kind] = moduleId;
+            }
+        },
+        /**
+         * Maps a kind name to it's module id. First it looks up a custom mapped kind, then falls back to `convertKindToModulePath`.
+         * @method mapKindToModuleId
+         * @param {string} kind The kind name.
+         * @return {string} The module id.
+         */
+        mapKindToModuleId: function(kind) {
+            return kindModuleMaps[kind] || widget.convertKindToModulePath(kind);
+        },
+        /**
+         * Converts a kind name to it's module path. Used to conventionally map kinds who aren't explicitly mapped through `mapKind`.
+         * @method convertKindToModulePath
+         * @param {string} kind The kind name.
+         * @return {string} The module path.
+         */
+        convertKindToModulePath: function(kind) {
+            return 'widgets/' + kind + '/viewmodel';
+        },
+        /**
+         * Maps a kind name to it's view id. First it looks up a custom mapped kind, then falls back to `convertKindToViewPath`.
+         * @method mapKindToViewId
+         * @param {string} kind The kind name.
+         * @return {string} The view id.
+         */
+        mapKindToViewId: function(kind) {
+            return kindViewMaps[kind] || widget.convertKindToViewPath(kind);
+        },
+        /**
+         * Converts a kind name to it's view id. Used to conventionally map kinds who aren't explicitly mapped through `mapKind`.
+         * @method convertKindToViewPath
+         * @param {string} kind The kind name.
+         * @return {string} The view id.
+         */
+        convertKindToViewPath: function(kind) {
+            return 'widgets/' + kind + '/view';
+        },
+        createCompositionSettings: function(element, settings) {
+            if (!settings.model) {
+                settings.model = this.mapKindToModuleId(settings.kind);
+            }
+
+            if (!settings.view) {
+                settings.view = this.mapKindToViewId(settings.kind);
+            }
+
+            settings.preserveContext = true;
+            settings.activate = true;
+            settings.activationData = settings;
+            settings.mode = 'templated';
+
+            return settings;
+        },
+        /**
+         * Creates a widget.
+         * @method create
+         * @param {DOMElement} element The DOMElement or knockout virtual element that serves as the target element for the widget.
+         * @param {object} settings The widget settings.
+         * @param {object} [bindingContext] The current binding context.
+         */
+        create: function(element, settings, bindingContext, fromBinding) {
+            if(!fromBinding){
+                settings = widget.getSettings(function() { return settings; }, element);
+            }
+
+            var compositionSettings = widget.createCompositionSettings(element, settings);
+
+            composition.compose(element, compositionSettings, bindingContext);
+        },
+        /**
+         * Installs the widget module by adding the widget binding handler and optionally registering kinds.
+         * @method install
+         * @param {object} config The module config. Add a `kinds` array with the names of widgets to automatically register. You can also specify a `bindingName` if you wish to use another name for the widget binding, such as "control" for example.
+         */
+        install:function(config){
+            config.bindingName = config.bindingName || 'widget';
+
+            if(config.kinds){
+                var toRegister = config.kinds;
+
+                for(var i = 0; i < toRegister.length; i++){
+                    widget.registerKind(toRegister[i]);
+                }
+            }
+
+            ko.bindingHandlers[config.bindingName] = {
+                init: function() {
+                    return { controlsDescendantBindings: true };
+                },
+                update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    var settings = widget.getSettings(valueAccessor);
+                    extractParts(element, settings);
+                    widget.create(element, settings, bindingContext, true);
+                }
+            };
+
+            composition.composeBindings.push(config.bindingName + ':');
+            ko.virtualElements.allowedBindings[config.bindingName] = true;
+        }
+    };
+
+    return widget;
+});
+
+define('widgets/index',['./project', 'plugins/widget', 'knockout'], function (Project, widget, ko) {
+    return {
+        projects: ko.observableArray([
+            new Project('Durandal', 'A cross-device, cross-platform application framework written in JavaScript, Durandal is a very small amount of code built on top of three existing and established Javascript libraries: jQuery, Knockout and RequireJS.'),
+            new Project('UnityDatabinding', 'A general databinding framework for Unity3D. Includes bindings for UI composition and samples for the NGUI library.'),
+            new Project('Caliburn.Micro', 'Caliburn.Micro is a small, yet powerful framework, designed for building applications across all Xaml Platforms. With strong support for MVVM and other proven UI patterns, Caliburn.Micro will enable you to build your solution quickly, without the need to sacrifice code quality or testability.')
+        ]),
+        addNewProject: function() {
+            this.projects.push(new Project('New Project ', 'A test project.'));
+        }
+    };
+});
 /**
  * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
  * Available via the MIT license.
@@ -14823,14 +15944,91 @@ define('text',['module'], function (module) {
     return text;
 });
 
-define('text!views/detail.html',[],function () { return '<div class="messageBox autoclose" style="max-width: 425px">\r\n    <div class="modal-header">\r\n        <h3>Details</h3>\r\n    </div>\r\n    <div class="modal-body">\r\n        <p data-bind="html: description"></p>\r\n    </div>\r\n</div>';});
+define('text!eventAggregator/index.html',[],function () { return '<div class="container-fluid">\r\n  <div class="row-fluid">\r\n    <div class="span6" data-bind="compose: publisher"></div>\r\n    <div class="span6" data-bind="compose: subscriber"></div>\r\n  </div>\r\n</div>';});
 
 
-define('text!views/flickr.html',[],function () { return '<section>\r\n    <h2 data-bind="html: displayName"></h2>\r\n    <div class="row-fluid">\r\n        <ul class="thumbnails" data-bind="foreach: images">\r\n            <li>\r\n                <a href="#" class="thumbnail" data-bind="click:$parent.select">\r\n                    <img style="width: 260px; height: 180px;" data-bind="attr: { src: media.m }"/>\r\n                </a>\r\n            </li>\r\n        </ul>\r\n    </div>\r\n</section>';});
+define('text!eventAggregator/publisher.html',[],function () { return '<form class="form-inline">\r\n    <fieldset>\r\n        <legend>Publisher</legend>\r\n        <label>Message</label>\r\n        <input type="text" data-bind="value: message, valueUpdate: \'afterkeydown\'"/>\r\n        <button type="submit" class="btn" data-bind="click: publish, enable: canPublish">Publish</button>\r\n    </fieldset>\r\n</form>';});
 
 
-define('text!views/shell.html',[],function () { return '<div>\r\n    <div class="navbar navbar-fixed-top">\r\n        <div class="navbar-inner">\r\n            <a class="brand" data-bind="attr: { href: router.navigationModel()[0].hash }">\r\n                <i class="icon-home"></i>\r\n                <span>Durandal</span>\r\n            </a>\r\n            <ul class="nav" data-bind="foreach: router.navigationModel">\r\n                <li data-bind="css: { active: isActive }">\r\n                    <a data-bind="attr: { href: hash }, html: title"></a>\r\n                </li>\r\n            </ul>\r\n            <div class="loader pull-right" data-bind="css: { active: router.isNavigating }">\r\n                <i class="icon-spinner icon-2x icon-spin"></i>\r\n            </div>\r\n            <form class="navbar-search pull-right" data-bind="submit:search">\r\n                <input type="text" class="search-query" placeholder="Search">\r\n            </form>\r\n        </div>\r\n    </div>\r\n    \r\n    <div class="container-fluid page-host" data-bind="router: { transition:\'entrance\', cacheViews:true }"></div>\r\n</div>';});
+define('text!eventAggregator/subscriber.html',[],function () { return '<div>\r\n    <h3>\r\n        Subscriber\r\n        <button class="btn btn-success" data-bind="enable: !subscription(), click: subscribe">Subscribe</button>\r\n        <button class="btn btn-danger" data-bind="enable: subscription, click: unsubscribe">Unsubscribe</button>\r\n    </h3>\r\n    <ul data-bind="foreach: received">\r\n        <li data-bind="text: $data"></li>\r\n    </ul>\r\n</div>';});
 
 
-define('text!views/welcome.html',[],function () { return '<section>\r\n    <h2 data-bind="html:displayName"></h2>\r\n    <blockquote data-bind="html:description"></blockquote>\r\n    <h3>Features</h3>\r\n    <ul data-bind="foreach: features">\r\n        <li data-bind="html: $data"></li>\r\n    </ul>\r\n    <div class="alert alert-success">\r\n      <h4>Read Me Please</h4>\r\n        For information about this template and for general documenation please visit <a href="http://www.durandaljs.com">the official site</a> and if you can\'t find \r\n        answers to your questions there, we hope you will join our <a href="https://groups.google.com/forum/?fromgroups#!forum/durandaljs">google group</a>.\r\n    </div>\r\n</section>';});
+define('text!hello/index.html',[],function () { return '<form class="form-inline">\r\n    <fieldset>\r\n        <legend data-bind="html: displayName"></legend>\r\n        <label>Name</label>\r\n        <input type="text" data-bind="value: name, valueUpdate: \'afterkeydown\'"/>\r\n        <button type="submit" class="btn" data-bind="click: sayHello, enable: canSayHello">Click Me</button>\r\n    </fieldset>\r\n</form>';});
 
+
+define('text!ko/animatedTrans/index.html',[],function () { return '<style type=\'text/css\'>\r\n    .planet { background-color: #AAEECC; padding: 0.35em; border: 1px solid silver; margin-bottom: 0.5em; font-size: 0.95em; }\r\n    .planet.rock { background-color: #EECCAA; }\r\n</style>\r\n<div>\r\n    <h2>Planets</h2>\r\n    <div class="well liveExample">\r\n      <div class="row-fluid">\r\n        <div class="span6">\r\n          <!--Sidebar content-->\r\n            <div> \r\n                <label>\r\n                    <input type=\'checkbox\' data-bind=\'checked: displayAdvancedOptions\' />\r\n                    Display advanced options\r\n                </label>\r\n            </div>\r\n            <br />\r\n            <div data-bind=\'fadeVisible: displayAdvancedOptions\'>\r\n                <label>Add a Planet:</label>\r\n                <button class="btn" data-bind=\'click: addPlanet.bind($data, "rock")\'>rocky planet</button>\r\n                <button class="btn" data-bind=\'click: addPlanet.bind($data, "gasgiant")\'>gas giant</button>\r\n            </div>\r\n            <br />\r\n            <div data-bind=\'fadeVisible: displayAdvancedOptions\'>\r\n                <label>Show:</label>\r\n                <label class="radio"><input type=\'radio\' name="type" value=\'all\' data-bind=\'checked: typeToShow\' />All</label>\r\n                <label class="radio"><input type=\'radio\' name="type" value=\'rock\' data-bind=\'checked: typeToShow\' />Rocky planets</label>\r\n                <label class="radio"><input type=\'radio\' name="type" value=\'gasgiant\' data-bind=\'checked: typeToShow\' />Gas giants</label>\r\n            </div>\r\n        </div>\r\n        <div class="span6">\r\n          <!--Body content-->\r\n            <div data-bind=\'template: {\r\n                    foreach: planetsToShow,\r\n                    beforeRemove: hidePlanetElement,\r\n                    afterAdd: showPlanetElement   }\'>\r\n                <div data-bind=\'attr: { "class": "planet " + type }, text: name\'> </div>\r\n            </div>\r\n        </div>\r\n      </div>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/betterList/index.html',[],function () { return '<div>\r\n    <h2>Better List</h2>\r\n    <div class="well liveExample">\r\n        <form data-bind="submit: addItem">\r\n            <label>Add item:</label>\r\n            <div class="input-append">\r\n                <input class="span3" data-bind=\'value: itemToAdd, valueUpdate: "afterkeydown"\' />\r\n                <button class="btn"  type="submit" data-bind="enable: itemToAdd().length > 0">Add</button>\r\n            </div>\r\n            <br />\r\n            <div>\r\n                <p>Your values:</p>\r\n                <select class="span3" multiple="multiple" size="6" data-bind="options: allItems, selectedOptions: selectedItems"></select>\r\n            </div> \r\n            <div class="span2">\r\n                <div class="pull-right">\r\n                    <button class="btn"  data-bind="click: removeSelected, enable: selectedItems().length > 0">Remove</button>\r\n                    <button class="btn"  data-bind="click: sortItems, enable: allItems().length > 1">Sort</button>\r\n                </div>\r\n            </div>\r\n        </form>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/clickCounter/index.html',[],function () { return '<div>\r\n    <h2>Click Counter</h2>\r\n    <div class="well liveExample">\r\n        <div>You\'ve clicked <span data-bind=\'text: numberOfClicks\'>&nbsp;</span> times</div>\r\n        <br />\r\n        <button data-bind=\'click: registerClick, disable: hasClickedTooManyTimes\'>Click me</button>\r\n        <br /><br />\r\n        <div data-bind=\'visible: hasClickedTooManyTimes\'>\r\n            That\'s too many clicks! Please stop before you wear out your fingers.\r\n            <button data-bind=\'click: resetClicks\'>Reset clicks</button>\r\n        </div>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/collections/index.html',[],function () { return '<style type=\'text/css\'>\r\n    .liveExample { font-size: 16px; }\r\n    .liveExample li { line-height: 26px; }\r\n    .liveExample h3 { line-height: 30px; }\r\n    .renderTime { color: #777; font-style: italic; font-size: 0.8em; }\r\n</style>\r\n<div>\r\n    <h2>Working with Collections</h2>\r\n    <div class="well liveExample">\r\n        <h3>People</h3>\r\n        <ul data-bind="foreach: people">\r\n            <li>\r\n                <div>\r\n                    <span data-bind="text: name"> </span> has <span data-bind=\'text: children().length\'>&nbsp;</span> children:\r\n                    <a href=\'#\' data-bind=\'click: addChild\'>Add child</a>\r\n                    <span class=\'renderTime\' data-bind=\'visible: $root.showRenderTimes\'>\r\n                        (person rendered at <span data-bind=\'text: new Date().getSeconds()\'> </span>)\r\n                    </span>\r\n                </div>\r\n                <ul data-bind="foreach: children">\r\n                    <li>\r\n                        <span data-bind="text: $data"> </span>\r\n                        <span class=\'renderTime\' data-bind=\'visible: $root.showRenderTimes\'>\r\n                            (child rendered at <span data-bind=\'text: new Date().getSeconds()\'> </span>)\r\n                        </span>\r\n                    </li>\r\n                </ul>\r\n            </li>\r\n        </ul>\r\n        <label><input data-bind=\'checked: showRenderTimes\' type=\'checkbox\' /> Show render times</label> \r\n    </div>\r\n</div>';});
+
+
+define('text!ko/contactsEditor/index.html',[],function () { return '<style>\r\n    .liveExample td { vertical-align: text-top; }\r\n    .liveExample textarea { width: initial;  }\r\n</style>\r\n<div>\r\n    <h2>Grid Editor</h2>\r\n    <div class="well liveExample">\r\n        <div id=\'contactsList\'>\r\n            <table class=\'contactsEditor\'>\r\n                <tr>\r\n                    <th>First name</th>\r\n                    <th>Last name</th>\r\n                    <th>Phone numbers</th>\r\n                </tr>\r\n                <tbody data-bind="foreach: ContactsModel.contacts">\r\n                    <tr>\r\n                        <td>\r\n                            <input data-bind=\'value: firstName\' />\r\n                            <div><a href=\'#\' data-bind=\'click: $root.ContactsModel.removeContact\'>Delete</a></div>\r\n                        </td>\r\n                        <td><input data-bind=\'value: lastName\' /></td>\r\n                        <td>\r\n                            <table>\r\n                                <tbody data-bind="foreach: phones">\r\n                                    <tr>\r\n                                        <td><input data-bind=\'value: type\' /></td>\r\n                                        <td><input data-bind=\'value: number\' /></td>\r\n                                        <td><a href=\'#\' data-bind=\'click: $root.ContactsModel.removePhone\'>Delete</a></td>\r\n                                    </tr>\r\n                                </tbody>\r\n                            </table>\r\n                            <a href=\'#\' data-bind=\'click: $root.ContactsModel.addPhone\'>Add number</a>\r\n                        </td>\r\n                    </tr>\r\n                </tbody>\r\n            </table>\r\n        </div>\r\n        <p>\r\n            <button data-bind=\'click: ContactsModel.addContact\'>Add a contact</button>\r\n            <button data-bind=\'click: ContactsModel.save, enable: ContactsModel.contacts().length > 0\'>Save to JSON</button>\r\n        </p>\r\n        <textarea data-bind=\'value: ContactsModel.lastSavedJson\' rows=\'5\' cols=\'60\'> </textarea>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/controlTypes/index.html',[],function () { return '<style type=\'text/css\'>\r\n    .liveExample h3 { line-height: 30px; }\r\n    .readout { width: 20em;}\r\n    .readout td { width: 50%; }\r\n    .kotable { width: 35em; }\r\n    tr { vertical-align: top }\r\n    td { padding: 0.2em 0.2em 0.6em 0.2em; }\r\n    td.kolabel { text-align: right; padding-right: 0.5em; }\r\n    input[type=radio] { margin: 0 0.25em 0 0.25em }\r\n</style>\r\n<div>\r\n    <h2>Control Types</h2>\r\n    <div class="well liveExample">\r\n        <div class="pull-right">\r\n            <h3>What\'s in the model?</h3>\r\n            <table class="table table-bordered">\r\n                <tr>\r\n                    <td class="kolabel">Text value:</td>\r\n                    <td data-bind="text: stringValue"></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Password:</td>\r\n                    <td data-bind="text: passwordValue"></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Bool value:</td>\r\n                    <td data-bind=\'text: booleanValue() ? "True" : "False"\'></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Selected option:</td>\r\n                    <td data-bind="text: selectedOptionValue"></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Multi-selected options:</td>\r\n                    <td data-bind="text: multipleSelectedOptionValues"></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Radio button selection:</td>\r\n                    <td data-bind="text: radioSelectedOptionValue"></td>\r\n                </tr>\r\n            </table>\r\n        </div>\r\n        <div class="kotable">\r\n            <h3>HTML controls</h3>\r\n            <table class="table table-bordered">\r\n                <tr>\r\n                    <td class="kolabel">Text value (updates on change):</td>\r\n                    <td><input data-bind="value: stringValue" /></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Text value (updates on keystroke):</td>\r\n                    <td><input data-bind=\'value: stringValue, valueUpdate: "afterkeydown"\' /></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Text value (multi-line):</td>\r\n                    <td><textarea data-bind="value: stringValue"> </textarea></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Password:</td>\r\n                    <td><input type="password" data-bind="value: passwordValue" /></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Checkbox:</td>\r\n                    <td><input type="checkbox" data-bind="checked: booleanValue" /></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Drop-down list:</td>\r\n                    <td><select data-bind="options: optionValues, value: selectedOptionValue"></select></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Multi-select drop-down list:</td>\r\n                    <td><select multiple="multiple" data-bind="options: optionValues, selectedOptions: multipleSelectedOptionValues"></select></td>\r\n                </tr>\r\n                <tr>\r\n                    <td class="kolabel">Radio buttons:</td>\r\n                    <td>\r\n                        <label><input type="radio" value="Alpha" data-bind="checked: radioSelectedOptionValue" />Alpha</label>\r\n                        <label><input type="radio" value="Beta" data-bind="checked: radioSelectedOptionValue" />Beta</label>\r\n                        <label><input type="radio" value="Gamma" data-bind="checked: radioSelectedOptionValue" />Gamma</label>\r\n                    </td>\r\n                </tr>\r\n            </table>\r\n        </div> \r\n    </div>\r\n</div>';});
+
+
+define('text!ko/gridEditor/index.html',[],function () { return '<style type=\'text/css\'>\r\n    .liveExample table, .liveExample td, .liveExample th { padding: 0.2em; border-width: 0; }\r\n    .liveExample td input { width: 13em; }\r\n    tr { vertical-align: top; }\r\n    .liveExample input.error { border: 1px solid red; background-color: #FDC; }\r\n    .liveExample label.error { display: block; color: Red; font-size: 0.8em; }    \r\n</style>\r\n<div>\r\n    <h2>Grid Editor</h2>\r\n    <div class=\'well liveExample\'> \r\n        <form data-bind=\'submit: doSubmit\'>\r\n            <p>You have asked for <span data-bind=\'text: GiftModel.gifts().length\'>&nbsp;</span> gift(s)</p>\r\n            <table data-bind=\'visible: GiftModel.gifts().length > 0\'>\r\n                <thead>\r\n                    <tr>\r\n                        <th>Gift name</th>\r\n                        <th>Price</th>\r\n                        <th />\r\n                    </tr>\r\n                </thead>\r\n                <tbody data-bind=\'foreach: GiftModel.gifts\'>\r\n                    <tr>\r\n                        <td><input class=\'required\' data-bind=\'value: name, uniqueName: true\' /></td>\r\n                        <td><input class=\'required number\' data-bind=\'value: price, uniqueName: true\' /></td>\r\n                        <td><button data-bind=\'click: $root.GiftModel.removeGift\'>Delete</button></td>\r\n                    </tr>\r\n                </tbody>\r\n            </table>\r\n        <button data-bind=\'click: GiftModel.addGift\'>Add Gift</button>\r\n        <button data-bind=\'enable: GiftModel.gifts().length > 0\' type="submit">Submit</button>\r\n        </form>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/helloWorld/index.html',[],function () { return '<div>\r\n    <h2>Hello World</h2>\r\n    <div class="well liveExample">\r\n        <p>First name: <input data-bind="value: firstName" /></p>\r\n        <p>Last name: <input data-bind="value: lastName" /></p>\r\n        <h3>Hello, <span data-bind="text: fullName"> </span>!</h3>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/index.html',[],function () { return '<div class="container-fluid knockout-samples">\r\n  <div class="row-fluid">\r\n    <div class="span2 well">\r\n        <ul class="nav nav-list">\r\n            <li class="nav-header">Basic Examples</li>\r\n            \r\n            <!--ko foreach: introSamples-->\r\n            <li data-bind="css: { active: isActive }">\r\n                <a data-bind="attr: { href: hash }, text: title"></a>\r\n            </li>\r\n            <!--/ko-->\r\n\r\n            <li class="nav-header">Detailed Examples</li>\r\n            \r\n\r\n            <!--ko foreach: detailedSamples-->\r\n            <li data-bind="css: { active: isActive }">\r\n                <a data-bind="attr: { href: hash }, text: title"></a>\r\n            </li>\r\n            <!--/ko-->\r\n        </ul>\r\n    </div>\r\n      <div class="span10">\r\n          <!--ko router: { transition:\'entrance\', cacheViews:true }--><!--/ko-->\r\n      </div>\r\n  </div>\r\n</div>';});
+
+
+define('text!ko/pagedGrid/index.html',[],function () { return '<div>\r\n    <h2>Paged Grid</h2>\r\n    <div class="well liveExample">\r\n        <div data-bind=\'compose: gridViewModel\'></div>\r\n \r\n        <button class="btn" data-bind=\'click: addItem\'>\r\n            Add item\r\n        </button>\r\n \r\n        <button class="btn" data-bind=\'click: sortByName\'>\r\n            Sort by name\r\n        </button>\r\n \r\n        <button class="btn" data-bind=\'click: jumpToFirstPage, enable: gridViewModel.currentPageIndex\'>\r\n            Jump to first page\r\n        </button> \r\n    </div>\r\n</div>';});
+
+
+define('text!ko/pagedGrid/simpleGrid.html',[],function () { return '<div>\r\n    <table class="table table-striped" cellspacing="0 ">\r\n        <thead>\r\n            <tr data-bind="foreach: columns">\r\n                <th data-bind="text: headerText"></th>\r\n            </tr>\r\n        </thead>\r\n        <tbody class="table table-hover" data-bind="foreach: itemsOnCurrentPage">\r\n            <tr data-bind="foreach: $parent.columns">\r\n                <td data-bind="text: typeof rowText == \'function\' ? rowText($parent) : $parent[rowText]"></td>\r\n            </tr>\r\n        </tbody>\r\n    </table>\r\n    <div class="pagination">\r\n        <ul>\r\n            <!-- ko foreach: ko.utils.range(0, maxPageIndex) -->\r\n            <li>\r\n                <a href="#" data-bind="text: $data + 1, click: function () { $root.currentPageIndex($data); }"></a>\r\n            </li>\r\n            <!-- /ko -->\r\n        </ul>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/shoppingCart/index.html',[],function () { return '<style>\r\n    .liveExample .price  { text-align: center }\r\n    .liveExample th { width: 11em; }\r\n    .liveExample input { width: 8em; float:right; text-align:right; padding-right:10px; }\r\n</style>\r\n<div>\r\n    <h2>Shopping Cart</h2>\r\n    <div class="well liveExample">\r\n        <table>\r\n            <thead>\r\n                <tr>\r\n                    <th>Category</th>\r\n                    <th>Product</th>\r\n                    <th class="price">Price</th>\r\n                    <th class="quantity">Quantity</th>\r\n                    <th class="price">Subtotal</th>\r\n                    <th> </th>\r\n                </tr>\r\n            </thead>\r\n            <tbody data-bind=\'foreach: Cart.lines\'>\r\n                <tr>\r\n                    <td>\r\n                        <select data-bind=\'options: sampleProductCategories, optionsText: "name", optionsCaption: "Select...", value: category\'> </select>\r\n                    </td>\r\n                    <td data-bind="with: category">\r\n                        <select data-bind=\'options: products, optionsText: "name", optionsCaption: "Select...", value: $parent.product\'> </select>\r\n                    </td>\r\n                    <td class=\'price\' data-bind=\'with: product\'>\r\n                        <span data-bind=\'text: $root.formatCurrency(price)\'> </span>\r\n                    </td>\r\n                    <td class=\'quantity\'>\r\n                        <input data-bind=\'visible: product, value: quantity, valueUpdate: "afterkeydown"\' />\r\n                    </td>\r\n                    <td class=\'price\'>\r\n                        <span data-bind=\'visible: product, text: $root.formatCurrency(subtotal())\' > </span>\r\n                    </td>\r\n                    <td>\r\n                        <button data-bind=\'click: $root.Cart.removeLine\'>Remove</button>\r\n                    </td>\r\n                </tr>\r\n            </tbody>\r\n        </table>\r\n        <p class=\'grandTotal\'>\r\n            Total value: <span data-bind=\'text: formatCurrency(Cart.grandTotal())\'> </span>\r\n        </p>\r\n        <button data-bind=\'click: Cart.addLine\'>Add product</button>\r\n        <button data-bind=\'click: Cart.save\'>Submit order</button>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/simpleList/index.html',[],function () { return '<div>\r\n    <h2>Simple List</h2>\r\n    <div class="well liveExample">\r\n        <form data-bind="submit: addItem">\r\n            <label>Add item:</label>\r\n            <div class="input-append">\r\n                <input class="span3" data-bind=\'value: itemToAdd, valueUpdate: "afterkeydown"\' />\r\n                <button class="btn" type="submit" data-bind="enable: itemToAdd().length > 0">Add</button>\r\n            </div>\r\n            <br />\r\n            <p>Your items:</p>\r\n            <select multiple="multiple" width="50" data-bind="options: items"></select>\r\n        </form>\r\n    </div>\r\n</div>';});
+
+
+define('text!ko/twitterClient/index.html',[],function () { return '<div>\r\n    <h2>Twitter Client</h2>\r\n    <div class=\'configuration\'>\r\n        <div class=\'listChooser\'>\r\n            <button data-bind=\'click: deleteList, enable: editingList.name\'>Delete</button>\r\n            <button data-bind=\'click: saveChanges, enable: hasUnsavedChanges\'>Save</button>\r\n            <select data-bind=\'options: savedLists, optionsValue: "name", value: editingList.name\'> </select>\r\n        </div>\r\n \r\n        <p>Currently viewing <span data-bind=\'text: editingList.userNames().length\'> </span> user(s):</p>\r\n        <div class=\'currentUsers\' data-bind=\'with: editingList\'>\r\n            <ul data-bind=\'foreach: userNames\'>\r\n                <li>\r\n                    <button data-bind=\'click: $root.removeUser\'>Remove</button>\r\n                    <div data-bind="text: $data"> </div>\r\n                </li>\r\n            </ul>\r\n        </div>\r\n \r\n        <form data-bind=\'submit: addUser\'>\r\n            <label>Add user:</label>\r\n            <input data-bind=\'value: userNameToAdd, valueUpdate: "keyup", css: { invalid: !userNameToAddIsValid() }\' />\r\n            <button data-bind=\'enable: canAddUserName\' type=\'submit\'>Add</button>\r\n        </form>\r\n    </div>\r\n    <div class=\'tweets\'>\r\n        <div class=\'loadingIndicator\'>Loading...</div>\r\n        <table width=\'100%\' data-bind="foreach: currentTweets">\r\n            <tr>\r\n                <td><img data-bind=\'attr: { src: profile_image_url }\' /></td>\r\n                <td>\r\n                    <a class=\'twitterUser\' data-bind=\'attr: { href: "http://twitter.com/" + from_user }, text: from_user\' href=\'http://twitter.com/${ from_user }\' > </a>\r\n                    <span data-bind="text: text"> </span>\r\n                    <div class=\'tweetInfo\' data-bind=\'text: created_at\'> </div>\r\n                </td>\r\n            </tr>\r\n        </table>\r\n    </div>\r\n</div>';});
+
+
+define('text!masterDetail/index.html',[],function () { return '<div>\r\n    <h1>Master Detail</h1>\r\n    \r\n    <label>Select Project</label>\r\n    <select data-bind="options: projects, optionsText: \'name\', value: activeProject"></select>\r\n    \r\n    <!--ko compose: activeProject--><!--/ko-->\r\n</div>';});
+
+
+define('text!masterDetail/project.html',[],function () { return '<div>\r\n    <h2 data-bind="html: name"></h2>\r\n    <div data-bind="html: description"></div>\r\n</div>';});
+
+
+define('text!modal/customModal.html',[],function () { return '<div class="messageBox">\r\n    <div class="modal-header">\r\n        <h3>Color</h3>\r\n    </div>\r\n    <div class="modal-body">\r\n        <form data-bind="submit: ok">\r\n            <p class="message">What is your favorite color?</p>\r\n            <input data-bind="value: input, valueUpdate: \'afterkeydown\'" class="autofocus"/>\r\n        </form>\r\n    </div>\r\n    <div class="modal-footer">\r\n        <button class="btn btn-primary" data-bind="click: ok">Ok</button>\r\n    </div>\r\n</div>';});
+
+
+define('text!modal/index.html',[],function () { return '<div>\r\n    <h2>Click the button below to show a custom modal.</h2>\r\n    <button class="btn" data-bind="click:showCustomModal">Show Custom Modal</button>\r\n</div>';});
+
+
+define('text!shell.html',[],function () { return '<div>\r\n    <div class="navbar navbar-fixed-top">\r\n        <div class="navbar-inner">\r\n            <a class="brand" data-bind="attr: { href: router.navigationModel()[0].hash }">\r\n                <i class="icon-home"></i>\r\n                <span>Durandal</span>\r\n            </a>\r\n            <ul class="nav" data-bind="foreach: router.navigationModel">\r\n                <li data-bind="css: { active: isActive }">\r\n                    <a data-bind="attr: { href: hash }, html: title"></a>\r\n                </li>\r\n            </ul>\r\n            <div class="loader pull-right" data-bind="css: { active: router.isNavigating }">\r\n                <i class="icon-spinner icon-2x icon-spin"></i>\r\n            </div>\r\n        </div>\r\n    </div>\r\n    \r\n    <div class="container-fluid page-host" data-bind="router: { transition:\'entrance\', cacheViews:true }"></div>\r\n</div>';});
+
+
+define('text!viewComposition/index.html',[],function () { return '<div>\r\n    <h1>The Views Below Are Composed In Different Ways</h1>\r\n    \r\n    <!--ko compose: \'childView1.html\'--><!--/ko-->\r\n    <!--ko compose: \'childView2.html\'--><!--/ko-->\r\n\r\n    <!--ko compose: { model:\'viewComposition/inlineModule\', mode:\'inline\'}-->\r\n        <h3 data-bind="text: someProperty"></h3>\r\n    <!--/ko-->\r\n\r\n    <!--ko compose: { view:\'childView2.html\', mode:\'templated\' }-->\r\n        <div data-part="content">This is a view part override of the default content....</div>\r\n    <!--/ko-->\r\n</div>';});
+
+
+define('text!views/childView1.html',[],function () { return '<div>\r\n    <h2>Child View One</h2>\r\n    <span data-bind="text: $root.propertyOne"></span>\r\n</div>';});
+
+
+define('text!views/childView2.html',[],function () { return '<div>\r\n    <h2>Child View Two</h2>\r\n    <span data-bind="text: propertyTwo"></span>\r\n    <div data-part="content">Some default content goes here.</div>\r\n</div>';});
+
+
+define('text!widgets/expander/view.html',[],function () { return '<div class="accordion" data-bind="foreach: { data: settings.items, afterRender: afterRenderItem }">\r\n  <div class="accordion-group">\r\n    <div class="accordion-heading">\r\n      <a data-part="headerContainer" class="accordion-toggle">\r\n        <div data-part="header" data-bind="html: $parent.getHeaderText($data)"></div>\r\n      </a>\r\n    </div>\r\n    <div class="accordion-body collapse in">\r\n      <div class="accordion-inner" data-part="itemContainer" >\r\n        <div data-part="item" data-bind="compose: $data"></div>\r\n      </div>\r\n    </div>\r\n  </div>\r\n</div>';});
+
+
+define('text!widgets/index.html',[],function () { return '<div>\r\n    <h1>Widgets Sample</h1>\r\n    <div data-bind="expander:{items:projects}">\r\n        <h3 data-part="header">Project: <span data-bind="text: name"></span></h3>\r\n    </div>\r\n    <button class="btn" data-bind="click: addNewProject">Add</button>\r\n</div>';});
+
+
+define('text!widgets/project.html',[],function () { return '<div>\r\n    <div data-bind="html: description"></div>\r\n</div>';});
+
+
+require(["main"]);
