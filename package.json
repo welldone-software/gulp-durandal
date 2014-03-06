@@ -1,7 +1,29 @@
 {
   "name": "gulp-durandalt",
-  "version": "0.1.0",
-  "description": "",
+"description": "A gulp plugin for building durandaljs projects.",
+  "version": "0.1.1",
+  "homepage": "https://github.com/welldone-software/gulp-durandal",
+  "author": {
+    "name": "Welldone Software Solutions Ltd.",
+    "email": "danikenan@gmail.com",
+    "url": "http://welldone-software.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:welldone-software/gulp-durandal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/welldone-software/gulp-durandal/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE"
+    }
+  ],
+  "engines": {
+    "node": ">= 0.8.0"
+  },
   "main": "index.js",
   "author": "",
   "license": "MIT",
@@ -20,5 +42,10 @@
     "glob": "^3.2.9",
     "event-stream": "^3.1.0",
     "gulp-util": "^2.2.14"
-  }
+  },
+  "files" : [ 
+      "res", 
+      "LICENSE", 
+      "index.js"
+    ]
 }
