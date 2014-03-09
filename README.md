@@ -109,7 +109,7 @@ If the value is a string, it should be the path to an almond script, relative to
 Type: `String[]`
 Default value: `[]`
 
-A list of extra modules to include in the output file, e.g. `['plugins/widget', 'plugins/dialog']`. This can be used for all dynamically loaded modules that reside outside of the baseDir (such as Durandal's own plugins and transitons).
+A list of extra modules to include in the output file, e.g. `['plugins/widget', 'plugins/dialog']`. This can be used for all dynamically loaded modules that reside outside of the baseDir (such as Durandal's own plugins and transitions).
 
 We will automatically include any module whose file is under the baseDir, as well as any of their explicit dependencies. Alas, non-explicit dependencies are not recognized automatically by r.js. If their files are outside the baseDir, they will not be recognized by our scanning process. Examples are the Durandal transitions that are loaded dynamically by convention, and Durandal plugins are loaded via `app.configurePlugins({ widget: true })`.
 
