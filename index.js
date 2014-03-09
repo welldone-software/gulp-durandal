@@ -68,7 +68,7 @@ module.exports = function gulpDurandaljs(userOptions){
             }
             return undefined;
         })(),
-        output = options.output || 'output.' + path.basename(mainFile),
+        output = options.output || path.basename(mainFile),
         rjsCb = function(text, sourceMapText){
             _s.resume();
 
