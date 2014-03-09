@@ -4,7 +4,7 @@ var gulp = require('gulp'),
     _ = require('lodash'),
     plugins = require('gulp-load-plugins')(),
     externalPlugins = {
-        durandaljs : require('./index')
+        durandal : require('./index')
     },
     outputDir = './test/tmp';
 
@@ -148,7 +148,7 @@ var generateTestTasks = function(){
 var testTasks = generateTestTasks();
 _.each(testTasks, function(task, taskName){
     return gulp.task(taskName, function(){
-        return externalPlugins.durandaljs(task)
+        return externalPlugins.durandal(task)
             .on('error', function(err){
                 console.log(err);
             })
@@ -177,9 +177,9 @@ gulp.task('clean', function(){
 //    cannot use gulp-clean here because of a bug where cleaning and rebuilding doesn't rewrite the rebuilt files.
 });
 
-gulp.task('durandaljs', _.keys(testTasks));
+gulp.task('durandal', _.keys(testTasks));
 
 gulp.task('prepare', ['jshint', 'clean']);
-gulp.task('test', ['durandaljs', 'nodeunit']);
+gulp.task('test', ['durandal', 'nodeunit']);
 
 gulp.task('default', ['prepare', 'test']);
