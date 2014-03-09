@@ -121,12 +121,22 @@ var generateTestTasks = function(){
         });
     };
 
+    var errorTest = function(tasks){
+        var taskName = 'errorTest';
+
+        tasks[taskName] = {
+            baseDir: 'test/fixtures/Broken Bower Project/app',
+            output: 'main.js'
+        };
+    };
+
     //comment out not needed tests
     testGenerators.push(simpleOutput);
     testGenerators.push(requireOutput);
     testGenerators.push(almondOutput);
     testGenerators.push(minifyTest);
     testGenerators.push(pathTest);
+    testGenerators.push(errorTest);
 
     _.each(testGenerators, function(generator){
         generator(tasks);
@@ -137,16 +147,18 @@ var generateTestTasks = function(){
 
 var testTasks = generateTestTasks();
 _.each(testTasks, function(task, taskName){
-    gulp.task(taskName, function(){
-        externalPlugins
-            .durandaljs(task)
+    return gulp.task(taskName, function(){
+        return externalPlugins.durandaljs(task)
+            .on('error', function(err){
+                console.log(err);
+            })
             .pipe(plugins.print())
-            .pipe(gulp.dest(outputDir + taskName));
+            .pipe(gulp.dest(outputDir + '/' + taskName));
     });
 });
 
 gulp.task('jshint', function(){
-    gulp.src(['test/*_test.js', './gulpfile.js', './index.js'])
+    return gulp.src(['test/*_test.js', './gulpfile.js', './index.js'])
         .pipe(plugins.jshint({
             globals: ['require', 'module', 'console']
         }))
@@ -154,12 +166,12 @@ gulp.task('jshint', function(){
 });
 
 gulp.task('nodeunit', function(){
-    gulp.src('test/*_test.js')
+    return gulp.src('test/*_test.js')
         .pipe(plugins.nodeunit());
 });
 
 gulp.task('clean', function(){
-//    gulp.src('test/tmp', {read: false})
+//    return gulp.src('test/tmp', {read: false})
 //        .pipe(plugins.clean({force: true}));
 //
 //    cannot use gulp-clean here because of a bug where cleaning and rebuilding doesn't rewrite the rebuilt files.

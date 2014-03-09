@@ -70,18 +70,25 @@ module.exports = function gulpDurandaljs(userOptions){
         })(),
         output = options.output || 'output.' + path.basename(mainFile),
         rjsCb = function(text, sourceMapText){
+            _s.resume();
+
             _s.write(new gutil.File({
                 path: output,
                 contents: new Buffer(text)
             }));
 
-            _s.write(new gutil.File({
-                path: output + '.map',
-                contents: new Buffer(sourceMapText)
-            }));
+            if(sourceMapText){
+                _s.write(new gutil.File({
+                    path: output + '.map',
+                    contents: new Buffer(sourceMapText)
+                }));
+            }
+
+            _s.end();
         },
         errCb = function(err){
-            _s.write(new gutil.PluginError(PLUGIN_NAME, err));
+            _s.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
+            _s.end();
         };
 
     var rjsConfig = {

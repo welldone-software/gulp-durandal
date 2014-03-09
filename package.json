@@ -1,6 +1,6 @@
 {
   "name": "gulp-durandal",
-"description": "A gulp plugin for building durandaljs projects.",
+  "description": "A gulp plugin for building durandaljs projects.",
   "version": "0.1.1",
   "homepage": "https://github.com/welldone-software/gulp-durandal",
   "author": {
@@ -25,7 +25,6 @@
     "node": ">= 0.8.0"
   },
   "main": "index.js",
-  "author": "",
   "license": "MIT",
   "devDependencies": {
     "gulp": "^3.5.5",
@@ -41,11 +40,12 @@
     "requirejs": "^2.1.11",
     "glob": "^3.2.9",
     "event-stream": "^3.1.0",
-    "gulp-util": "^2.2.14"
+    "gulp-util": "^2.2.14",
+    "gulp-load-plugins": "^0.3.0"
   },
-  "files" : [ 
-      "res", 
-      "LICENSE", 
-      "index.js"
-    ]
+  "files": [
+    "res",
+    "LICENSE",
+    "index.js"
+  ]
 }
