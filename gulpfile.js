@@ -27,7 +27,6 @@ var generateTestTasks = function(){
             var taskName = 'simpleOutput' + testNum;
             tasks[taskName] = {
                 baseDir: baseDir,
-                output: 'main.js',
                 extraModules: testOptions.extraModules
             };
         });
