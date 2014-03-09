@@ -41,9 +41,9 @@ In your project's Gulpfile, lunch the plugin inside a task with the wanted confi
 ```js
 gulp.task('durandal', function(){
     return durandal({
-            baseDir: 'app',  //same as default, so not really required
-            main: 'main.js', //same as default, so not really required
-            output: 'dist/dev/main.js'
+            baseDir: 'app',   //same as default, so not really required
+            main: 'main.js',  //same as default, so not really required
+            output: 'main.js' //same as default, so not really required
             almond: true,
             minify: true
         })
