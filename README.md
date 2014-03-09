@@ -121,7 +121,7 @@ Module names are resolved and mapped to files according to the paths and mapping
 Type: `Boolean|String|String[]`
 Default value: `options.almond? true : false`
 
-Determines if a '`require([...])'` call is to be inserted, and which modules are included in the list of requried modules. 
+Determines if a '`require([...])'` call is to be inserted, and which modules are included in the list of required modules.
 
 When `options.almond` is used, this value is `true` by default as almond requires usually to explicitly call `require(['<main module name>'])`, which is not the convention for require js and Durandal.
 
