@@ -87,6 +87,7 @@ module.exports = function gulpDurandaljs(userOptions){
             _s.end();
         },
         errCb = function(err){
+            _s.resume();
             _s.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
             _s.end();
         };

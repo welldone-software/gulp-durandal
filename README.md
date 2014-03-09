@@ -36,24 +36,33 @@ executes.
 
 ### Overview
 
-In your project's Gulpfile, lunch the plugin inside a task with the wanted configurations. The plugin will return the stream of the wanted file and optimally it's source map.
+In your project's Gulpfile, lunch the plugin inside a task with the wanted configurations. The plugin will return the stream of the wanted file and it's source map.
 
 ```js
 var durandal = require('gulp-durandal');
 
 gulp.task('durandal', function(){
-    return durandal({
-            baseDir: 'app',   //same as default, so not really required
-            main: 'main.js',  //same as default, so not really required
-            output: 'main.js' //same as default, so not really required
+    durandal({
+            baseDir: 'app',   //same as default, so not really required.
+            main: 'main.js',  //same as default, so not really required.
+            output: 'main.js' //same as default, so not really required.
             almond: true,
             minify: true
         })
-        .on('error', function(err){
-            console.log(err);
-        })
         .pipe(gulp.dest('destination/to/save/the/output'));
 });
+```
+
+For async tasks, handling of `error` and `end` events should be added.
+
+```js
+gulp.task('durandal-async', function(cb){
+    durandal({
+            baseDir: 'app'   //same as default, so not really required.
+        })
+        .on('error', cb)
+        .pipe(gulp.dest('destination/to/save/the/output'))
+        .on('end', cb);
 ```
 
 ### Options

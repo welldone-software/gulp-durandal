@@ -124,7 +124,7 @@ var generateTestTasks = function(){
         var taskName = 'errorTest';
 
         tasks[taskName] = {
-            baseDir: 'test/fixtures/Broken Bower Project/app',
+            baseDir: 'test/fixtures/Broken Project/app',
             output: 'main.js'
         };
     };
@@ -146,33 +146,37 @@ var generateTestTasks = function(){
 
 var testTasks = generateTestTasks();
 _.each(testTasks, function(task, taskName){
-    return gulp.task(taskName, function(){
-        return externalPlugins.durandal(task)
-            .on('error', function(err){
-                console.log(err);
-            })
+    gulp.task(taskName, function(cb){
+        externalPlugins.durandal(task)
+            .on('error', cb)
             .pipe(plugins.print())
-            .pipe(gulp.dest(outputDir + '/' + taskName));
+            .pipe(gulp.dest(outputDir + '/' + taskName))
+            .on('end', cb);
     });
 });
 
 gulp.task('jshint', function(){
-    return gulp.src(['test/*_test.js', './gulpfile.js', './index.js'])
+    var stream = gulp.src(['test/*_test.js', './gulpfile.js', './index.js'])
         .pipe(plugins.jshint({
             globals: ['require', 'module', 'console']
         }))
         .pipe(plugins.jshint.reporter('default'));
+
+    return stream;
 });
 
 gulp.task('nodeunit', function(){
-    return gulp.src('test/*_test.js')
+    var stream = gulp.src('test/*_test.js')
         .pipe(plugins.nodeunit());
+
+    return stream;
 });
 
 gulp.task('clean', function(){
-//    return gulp.src('test/tmp', {read: false})
+//    var stream = gulp.src('test/tmp', {read: false})
 //        .pipe(plugins.clean({force: true}));
 //
+//    return stream;
 //    cannot use gulp-clean here because of a bug where cleaning and rebuilding doesn't rewrite the rebuilt files.
 });
 
