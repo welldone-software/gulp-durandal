@@ -149,7 +149,7 @@ _.each(testTasks, function(task, taskName){
     gulp.task(taskName, function(cb){
         externalPlugins.durandal(task)
             .on('error', cb)
-            .pipe(plugins.print())
+            .pipe(plugins.print(function(filename){return taskName + ': ' + filename;}))
             .pipe(gulp.dest(outputDir + '/' + taskName))
             .on('end', cb);
     });
