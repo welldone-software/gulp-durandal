@@ -63,14 +63,19 @@ module.exports = function gulpDurandaljs(userOptions){
                 textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
                 scannedModules = {js: jsModules, text: textModules},
                 dynamicModules = options.durandalDynamicModules ? [].concat(
-                    mainFileContent.match(/['"]?plugins['"]?\s.*?:/i) ? durandalDynamicPlugins : [],
-                    mainFileContent.match(/['"]?transitions['"]?\s.*?:/i) ? durandalDynamicTransitions: []
+                    mainFileContent.match(/['"]?plugins['"]?\s*?:/) ? durandalDynamicPlugins : [],
+                    mainFileContent.match(/['"]?transitions['"]?\s*?:/) ? durandalDynamicTransitions: []
                 ) : [];
 
-            if(options.verbose){console.log('Gulpfile added the following modules dynamicly: ' + dynamicModules)}
+            if(options.verbose && dynamicModules.length){
+                gutil.log('Durandal added dynamicModules: ' + dynamicModules.join(','));
+            }
 
-            return _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
+            var modules = _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
                 .filter(options.moduleFilter).map(fixSlashes);
+
+            return _.unique(modules);
+
         })(),
 
         insertRequireModules = (function(){
@@ -83,8 +88,11 @@ module.exports = function gulpDurandaljs(userOptions){
             return undefined;
         })(),
         output = options.output || path.basename(mainFile),
+        mapOutput = output + '.map',
         rjsCb = function(text, sourceMapText){
             _s.resume();
+
+            text += '//# sourceMappingURL=' + path.basename(mapOutput);
 
             _s.write(new gutil.File({
                 path: output,
@@ -93,7 +101,7 @@ module.exports = function gulpDurandaljs(userOptions){
 
             if(sourceMapText){
                 _s.write(new gutil.File({
-                    path: output + '.map',
+                    path: mapOutput,
                     contents: new Buffer(sourceMapText)
                 }));
             }
