@@ -4,7 +4,7 @@
 
 >Both scripts and views are compiled into a single output file.
 
->No double maintenance of path mapping. Allows various code layouts (bower, app.net etc), using the paths already configured in you main.js.
+>No double maintenance of path mapping. Allows various code layouts (bower, app.net etc), using the paths already configured in your `main.js`.
 
 >Minimalistic and simple. No need to be expert with r.js's 60+ options. In many cases, the following should be enough:
 
