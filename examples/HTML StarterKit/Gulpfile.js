@@ -6,7 +6,7 @@ var gulp = require('gulp'),
     htmlReplace = require('gulp-html-replace'),
     durandal = require(/*'gulp-durandal'*/ '../../index');
 
-var dest = '../Starterkit Dist';
+var dest = '../dist/HTML StarterKit';
 
 var extraModules = [
     'plugins/widget',
