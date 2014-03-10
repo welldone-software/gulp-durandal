@@ -133,6 +133,12 @@ In short, all required modules must either reside under the baseDir, be an expli
 
 Module names are resolved and mapped to files according to the paths and mapping in the `main` config file, so use the same names as you would do in your code.
 
+#### options.durandalDynamicModules
+Type: `Boolean`
+Default value: `true`
+
+True to add all default Durandal plugins and transitions to `options.extraModules`.
+
 #### options.require
 Type: `Boolean|String|String[]`
 Default value: `options.almond? true : false`
