@@ -56,7 +56,7 @@ gulp.task('durandal', function(){
             almond: true,
             minify: true
         })
-        .pipe(gulp.dest('destination/to/save/the/output'));
+        .pipe(gulp.dest('dir/to/save/the/output'));
 });
 ```
 
@@ -65,10 +65,10 @@ For async tasks, handling of `error` and `end` events should be added.
 ```js
 gulp.task('durandal-async', function(cb){
     durandal({
-            baseDir: 'app'   //same as default, so not really required.
+            ...
         })
         .on('error', cb)
-        .pipe(gulp.dest('destination/to/save/the/output'))
+        .pipe(gulp.dest('dir/to/save/the/output'))
         .on('end', cb);
 ```
 
