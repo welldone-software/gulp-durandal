@@ -137,7 +137,8 @@ Module names are resolved and mapped to files according to the paths and mapping
 Type: `Boolean`
 Default value: `true`
 
-True to add all default Durandal plugins and transitions to `options.extraModules`.
+True to add default Durandal dynamic modules to `options.extraModules`.
+Adds all default Durandal plugins and transitions if the definition of `plugins` / `transitions` paths exists in the `main` config file.
 
 #### options.require
 Type: `Boolean|String|String[]`
