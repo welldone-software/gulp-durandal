@@ -13150,6 +13150,2041 @@ define('shell',['require','../ext/external-shell-generator'],function (require) 
     return require('../ext/external-shell-generator');
 });
 /**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * This module is based on Backbone's core history support. It abstracts away the low level details of working with browser history and url changes in order to provide a solid foundation for a router.
+ * @module history
+ * @requires system
+ * @requires jquery
+ */
+define('plugins/history',['durandal/system', 'jquery'], function (system, $) {
+    // Cached regex for stripping a leading hash/slash and trailing space.
+    var routeStripper = /^[#\/]|\s+$/g;
+
+    // Cached regex for stripping leading and trailing slashes.
+    var rootStripper = /^\/+|\/+$/g;
+
+    // Cached regex for detecting MSIE.
+    var isExplorer = /msie [\w.]+/;
+
+    // Cached regex for removing a trailing slash.
+    var trailingSlash = /\/$/;
+
+    // Update the hash location, either replacing the current entry, or adding
+    // a new one to the browser history.
+    function updateHash(location, fragment, replace) {
+        if (replace) {
+            var href = location.href.replace(/(javascript:|#).*$/, '');
+            location.replace(href + '#' + fragment);
+        } else {
+            // Some browsers require that `hash` contains a leading #.
+            location.hash = '#' + fragment;
+        }
+    };
+
+    /**
+     * @class HistoryModule
+     * @static
+     */
+    var history = {
+        /**
+         * The setTimeout interval used when the browser does not support hash change events.
+         * @property {string} interval
+         * @default 50
+         */
+        interval: 50,
+        /**
+         * Indicates whether or not the history module is actively tracking history.
+         * @property {string} active
+         */
+        active: false
+    };
+    
+    // Ensure that `History` can be used outside of the browser.
+    if (typeof window !== 'undefined') {
+        history.location = window.location;
+        history.history = window.history;
+    }
+
+    /**
+     * Gets the true hash value. Cannot use location.hash directly due to a bug in Firefox where location.hash will always be decoded.
+     * @method getHash
+     * @param {string} [window] The optional window instance
+     * @return {string} The hash.
+     */
+    history.getHash = function(window) {
+        var match = (window || history).location.href.match(/#(.*)$/);
+        return match ? match[1] : '';
+    };
+    
+    /**
+     * Get the cross-browser normalized URL fragment, either from the URL, the hash, or the override.
+     * @method getFragment
+     * @param {string} fragment The fragment.
+     * @param {boolean} forcePushState Should we force push state?
+     * @return {string} he fragment.
+     */
+    history.getFragment = function(fragment, forcePushState) {
+        if (fragment == null) {
+            if (history._hasPushState || !history._wantsHashChange || forcePushState) {
+                fragment = history.location.pathname + history.location.search;
+                var root = history.root.replace(trailingSlash, '');
+                if (!fragment.indexOf(root)) {
+                    fragment = fragment.substr(root.length);
+                }
+            } else {
+                fragment = history.getHash();
+            }
+        }
+        
+        return fragment.replace(routeStripper, '');
+    };
+
+    /**
+     * Activate the hash change handling, returning `true` if the current URL matches an existing route, and `false` otherwise.
+     * @method activate
+     * @param {HistoryOptions} options.
+     * @return {boolean|undefined} Returns true/false from loading the url unless the silent option was selected.
+     */
+    history.activate = function(options) {
+        if (history.active) {
+            system.error("History has already been activated.");
+        }
+
+        history.active = true;
+
+        // Figure out the initial configuration. Do we need an iframe?
+        // Is pushState desired ... is it available?
+        history.options = system.extend({}, { root: '/' }, history.options, options);
+        history.root = history.options.root;
+        history._wantsHashChange = history.options.hashChange !== false;
+        history._wantsPushState = !!history.options.pushState;
+        history._hasPushState = !!(history.options.pushState && history.history && history.history.pushState);
+
+        var fragment = history.getFragment();
+        var docMode = document.documentMode;
+        var oldIE = (isExplorer.exec(navigator.userAgent.toLowerCase()) && (!docMode || docMode <= 7));
+
+        // Normalize root to always include a leading and trailing slash.
+        history.root = ('/' + history.root + '/').replace(rootStripper, '/');
+
+        if (oldIE && history._wantsHashChange) {
+            history.iframe = $('<iframe src="javascript:0" tabindex="-1" />').hide().appendTo('body')[0].contentWindow;
+            history.navigate(fragment, false);
+        }
+
+        // Depending on whether we're using pushState or hashes, and whether
+        // 'onhashchange' is supported, determine how we check the URL state.
+        if (history._hasPushState) {
+            $(window).on('popstate', history.checkUrl);
+        } else if (history._wantsHashChange && ('onhashchange' in window) && !oldIE) {
+            $(window).on('hashchange', history.checkUrl);
+        } else if (history._wantsHashChange) {
+            history._checkUrlInterval = setInterval(history.checkUrl, history.interval);
+        }
+
+        // Determine if we need to change the base url, for a pushState link
+        // opened by a non-pushState browser.
+        history.fragment = fragment;
+        var loc = history.location;
+        var atRoot = loc.pathname.replace(/[^\/]$/, '$&/') === history.root;
+
+        // Transition from hashChange to pushState or vice versa if both are requested.
+        if (history._wantsHashChange && history._wantsPushState) {
+            // If we've started off with a route from a `pushState`-enabled
+            // browser, but we're currently in a browser that doesn't support it...
+            if (!history._hasPushState && !atRoot) {
+                history.fragment = history.getFragment(null, true);
+                history.location.replace(history.root + history.location.search + '#' + history.fragment);
+                // Return immediately as browser will do redirect to new url
+                return true;
+
+            // Or if we've started out with a hash-based route, but we're currently
+            // in a browser where it could be `pushState`-based instead...
+            } else if (history._hasPushState && atRoot && loc.hash) {
+                this.fragment = history.getHash().replace(routeStripper, '');
+                this.history.replaceState({}, document.title, history.root + history.fragment + loc.search);
+            }
+        }
+
+        if (!history.options.silent) {
+            return history.loadUrl();
+        }
+    };
+
+    /**
+     * Disable history, perhaps temporarily. Not useful in a real app, but possibly useful for unit testing Routers.
+     * @method deactivate
+     */
+    history.deactivate = function() {
+        $(window).off('popstate', history.checkUrl).off('hashchange', history.checkUrl);
+        clearInterval(history._checkUrlInterval);
+        history.active = false;
+    };
+
+    /**
+     * Checks the current URL to see if it has changed, and if it has, calls `loadUrl`, normalizing across the hidden iframe.
+     * @method checkUrl
+     * @return {boolean} Returns true/false from loading the url.
+     */
+    history.checkUrl = function() {
+        var current = history.getFragment();
+        if (current === history.fragment && history.iframe) {
+            current = history.getFragment(history.getHash(history.iframe));
+        }
+
+        if (current === history.fragment) {
+            return false;
+        }
+
+        if (history.iframe) {
+            history.navigate(current, false);
+        }
+        
+        history.loadUrl();
+    };
+    
+    /**
+     * Attempts to load the current URL fragment. A pass-through to options.routeHandler.
+     * @method loadUrl
+     * @return {boolean} Returns true/false from the route handler.
+     */
+    history.loadUrl = function(fragmentOverride) {
+        var fragment = history.fragment = history.getFragment(fragmentOverride);
+
+        return history.options.routeHandler ?
+            history.options.routeHandler(fragment) :
+            false;
+    };
+
+    /**
+     * Save a fragment into the hash history, or replace the URL state if the
+     * 'replace' option is passed. You are responsible for properly URL-encoding
+     * the fragment in advance.
+     * The options object can contain `trigger: false` if you wish to not have the
+     * route callback be fired, or `replace: true`, if
+     * you wish to modify the current URL without adding an entry to the history.
+     * @method navigate
+     * @param {string} fragment The url fragment to navigate to.
+     * @param {object|boolean} options An options object with optional trigger and replace flags. You can also pass a boolean directly to set the trigger option. Trigger is `true` by default.
+     * @return {boolean} Returns true/false from loading the url.
+     */
+    history.navigate = function(fragment, options) {
+        if (!history.active) {
+            return false;
+        }
+
+        if(options === undefined) {
+            options = {
+                trigger: true
+            };
+        }else if(system.isBoolean(options)) {
+            options = {
+                trigger: options
+            };
+        }
+
+        fragment = history.getFragment(fragment || '');
+
+        if (history.fragment === fragment) {
+            return;
+        }
+
+        history.fragment = fragment;
+
+        var url = history.root + fragment;
+
+        // Don't include a trailing slash on the root.
+        if(fragment === '' && url !== '/') {
+            url = url.slice(0, -1);
+        }
+
+        // If pushState is available, we use it to set the fragment as a real URL.
+        if (history._hasPushState) {
+            history.history[options.replace ? 'replaceState' : 'pushState']({}, document.title, url);
+
+            // If hash changes haven't been explicitly disabled, update the hash
+            // fragment to store history.
+        } else if (history._wantsHashChange) {
+            updateHash(history.location, fragment, options.replace);
+            
+            if (history.iframe && (fragment !== history.getFragment(history.getHash(history.iframe)))) {
+                // Opening and closing the iframe tricks IE7 and earlier to push a
+                // history entry on hash-tag change.  When replace is true, we don't
+                // want history.
+                if (!options.replace) {
+                    history.iframe.document.open().close();
+                }
+                
+                updateHash(history.iframe.location, fragment, options.replace);
+            }
+
+            // If you've told us that you explicitly don't want fallback hashchange-
+            // based history, then `navigate` becomes a page refresh.
+        } else {
+            return history.location.assign(url);
+        }
+
+        if (options.trigger) {
+            return history.loadUrl(fragment);
+        }
+    };
+
+    /**
+     * Navigates back in the browser history.
+     * @method navigateBack
+     */
+    history.navigateBack = function() {
+        history.history.back();
+    };
+
+    /**
+     * @class HistoryOptions
+     * @static
+     */
+
+    /**
+     * The function that will be called back when the fragment changes.
+     * @property {function} routeHandler
+     */
+
+    /**
+     * The url root used to extract the fragment when using push state.
+     * @property {string} root
+     */
+
+    /**
+     * Use hash change when present.
+     * @property {boolean} hashChange
+     * @default true
+     */
+
+    /**
+     * Use push state when present.
+     * @property {boolean} pushState
+     * @default false
+     */
+
+    /**
+     * Prevents loading of the current url when activating history.
+     * @property {boolean} silent
+     * @default false
+     */
+
+    return history;
+});
+
+/**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * Enables common http request scenarios.
+ * @module http
+ * @requires jquery
+ * @requires knockout
+ */
+define('plugins/http',['jquery', 'knockout'], function($, ko) {
+    /**
+     * @class HTTPModule
+     * @static
+     */
+    return {
+        /**
+         * The name of the callback parameter to inject into jsonp requests by default.
+         * @property {string} callbackParam
+         * @default callback
+         */
+        callbackParam:'callback',
+        /**
+         * Makes an HTTP GET request.
+         * @method get
+         * @param {string} url The url to send the get request to.
+         * @param {object} [query] An optional key/value object to transform into query string parameters.
+         * @return {Promise} A promise of the get response data.
+         */
+        get:function(url, query) {
+            return $.ajax(url, { data: query });
+        },
+        /**
+         * Makes an JSONP request.
+         * @method jsonp
+         * @param {string} url The url to send the get request to.
+         * @param {object} [query] An optional key/value object to transform into query string parameters.
+         * @param {string} [callbackParam] The name of the callback parameter the api expects (overrides the default callbackParam).
+         * @return {Promise} A promise of the response data.
+         */
+        jsonp: function (url, query, callbackParam) {
+            if (url.indexOf('=?') == -1) {
+                callbackParam = callbackParam || this.callbackParam;
+
+                if (url.indexOf('?') == -1) {
+                    url += '?';
+                } else {
+                    url += '&';
+                }
+
+                url += callbackParam + '=?';
+            }
+
+            return $.ajax({
+                url: url,
+                dataType:'jsonp',
+                data:query
+            });
+        },
+        /**
+         * Makes an HTTP POST request.
+         * @method post
+         * @param {string} url The url to send the post request to.
+         * @param {object} data The data to post. It will be converted to JSON. If the data contains Knockout observables, they will be converted into normal properties before serialization.
+         * @return {Promise} A promise of the response data.
+         */
+        post:function(url, data) {
+            return $.ajax({
+                url: url,
+                data: ko.toJSON(data),
+                type: 'POST',
+                contentType: 'application/json',
+                dataType: 'json'
+            });
+        }
+    };
+});
+
+/**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * Enables automatic observability of plain javascript object for ES5 compatible browsers. Also, converts promise properties into observables that are updated when the promise resolves.
+ * @module observable
+ * @requires system
+ * @requires binder
+ * @requires knockout
+ */
+define('plugins/observable',['durandal/system', 'durandal/binder', 'knockout'], function(system, binder, ko) {
+    var observableModule,
+        toString = Object.prototype.toString,
+        nonObservableTypes = ['[object Function]', '[object String]', '[object Boolean]', '[object Number]', '[object Date]', '[object RegExp]'],
+        observableArrayMethods = ['remove', 'removeAll', 'destroy', 'destroyAll', 'replace'],
+        arrayMethods = ['pop', 'reverse', 'sort', 'shift', 'splice'],
+        additiveArrayFunctions = ['push', 'unshift'],
+        arrayProto = Array.prototype,
+        observableArrayFunctions = ko.observableArray.fn,
+        logConversion = false;
+
+    /**
+     * You can call observable(obj, propertyName) to get the observable function for the specified property on the object.
+     * @class ObservableModule
+     */
+
+    function shouldIgnorePropertyName(propertyName){
+        var first = propertyName[0];
+        return first === '_' || first === '$';
+    }
+
+    function isNode(obj) {
+        return !!(obj && obj.nodeType !== undefined && system.isNumber(obj.nodeType));
+    }
+
+    function canConvertType(value) {
+        if (!value || isNode(value) || value.ko === ko || value.jquery) {
+            return false;
+        }
+
+        var type = toString.call(value);
+
+        return nonObservableTypes.indexOf(type) == -1 && !(value === true || value === false);
+    }
+
+    function makeObservableArray(original, observable) {
+        var lookup = original.__observable__, notify = true;
+
+        if(lookup && lookup.__full__){
+            return;
+        }
+
+        lookup = lookup || (original.__observable__ = {});
+        lookup.__full__ = true;
+
+        observableArrayMethods.forEach(function(methodName) {
+            original[methodName] = function() {
+                notify = false;
+                var methodCallResult = observableArrayFunctions[methodName].apply(observable, arguments);
+                notify = true;
+                return methodCallResult;
+            };
+        });
+
+        arrayMethods.forEach(function(methodName) {
+            original[methodName] = function() {
+                if(notify){
+                    observable.valueWillMutate();
+                }
+
+                var methodCallResult = arrayProto[methodName].apply(original, arguments);
+
+                if(notify){
+                    observable.valueHasMutated();
+                }
+
+                return methodCallResult;
+            };
+        });
+
+        additiveArrayFunctions.forEach(function(methodName){
+            original[methodName] = function() {
+                for (var i = 0, len = arguments.length; i < len; i++) {
+                    convertObject(arguments[i]);
+                }
+
+                if(notify){
+                    observable.valueWillMutate();
+                }
+
+                var methodCallResult = arrayProto[methodName].apply(original, arguments);
+
+                if(notify){
+                    observable.valueHasMutated();
+                }
+
+                return methodCallResult;
+            };
+        });
+
+        original['splice'] = function() {
+            for (var i = 2, len = arguments.length; i < len; i++) {
+                convertObject(arguments[i]);
+            }
+
+            if(notify){
+                observable.valueWillMutate();
+            }
+
+            var methodCallResult = arrayProto['splice'].apply(original, arguments);
+
+            if(notify){
+                observable.valueHasMutated();
+            }
+
+            return methodCallResult;
+        };
+
+        for (var i = 0, len = original.length; i < len; i++) {
+            convertObject(original[i]);
+        }
+    }
+
+    /**
+     * Converts an entire object into an observable object by re-writing its attributes using ES5 getters and setters. Attributes beginning with '_' or '$' are ignored.
+     * @method convertObject
+     * @param {object} obj The target object to convert.
+     */
+    function convertObject(obj){
+        var lookup, value;
+
+        if(!canConvertType(obj)){
+            return;
+        }
+
+        lookup = obj.__observable__;
+
+        if(lookup && lookup.__full__){
+            return;
+        }
+
+        lookup = lookup || (obj.__observable__ = {});
+        lookup.__full__ = true;
+
+        if (system.isArray(obj)) {
+            var observable = ko.observableArray(obj);
+            makeObservableArray(obj, observable);
+        } else {
+            for (var propertyName in obj) {
+                if(shouldIgnorePropertyName(propertyName)){
+                    continue;
+                }
+
+                if(!lookup[propertyName]){
+                    value = obj[propertyName];
+
+                    if(!system.isFunction(value)){
+                        convertProperty(obj, propertyName, value);
+                    }
+                }
+            }
+        }
+
+        if(logConversion) {
+            system.log('Converted', obj);
+        }
+    }
+
+    function innerSetter(observable, newValue, isArray) {
+        var val;
+        observable(newValue);
+        val = observable.peek();
+
+        //if this was originally an observableArray, then always check to see if we need to add/replace the array methods (if newValue was an entirely new array)
+        if (isArray) {
+            if (!val) {
+                //don't allow null, force to an empty array
+                val = [];
+                observable(val);
+                makeObservableArray(val, observable);
+            }
+            else if (!val.destroyAll) {
+                makeObservableArray(val, observable);
+            }
+        } else {
+            convertObject(val);
+        }
+    }
+
+    /**
+     * Converts a normal property into an observable property using ES5 getters and setters.
+     * @method convertProperty
+     * @param {object} obj The target object on which the property to convert lives.
+     * @param {string} propertyName The name of the property to convert.
+     * @param {object} [original] The original value of the property. If not specified, it will be retrieved from the object.
+     * @return {KnockoutObservable} The underlying observable.
+     */
+    function convertProperty(obj, propertyName, original){
+        var observable,
+            isArray,
+            lookup = obj.__observable__ || (obj.__observable__ = {});
+
+        if(original === undefined){
+            original = obj[propertyName];
+        }
+
+        if (system.isArray(original)) {
+            observable = ko.observableArray(original);
+            makeObservableArray(original, observable);
+            isArray = true;
+        } else if (typeof original == "function") {
+            if(ko.isObservable(original)){
+                observable = original;
+            }else{
+                return null;
+            }
+        } else if(system.isPromise(original)) {
+            observable = ko.observable();
+
+            original.then(function (result) {
+                if(system.isArray(result)) {
+                    var oa = ko.observableArray(result);
+                    makeObservableArray(result, oa);
+                    result = oa;
+                }
+
+                observable(result);
+            });
+        } else {
+            observable = ko.observable(original);
+            convertObject(original);
+        }
+
+        Object.defineProperty(obj, propertyName, {
+            configurable: true,
+            enumerable: true,
+            get: observable,
+            set: ko.isWriteableObservable(observable) ? (function (newValue) {
+                if (newValue && system.isPromise(newValue)) {
+                    newValue.then(function (result) {
+                        innerSetter(observable, result, system.isArray(result));
+                    });
+                } else {
+                    innerSetter(observable, newValue, isArray);
+                }
+            }) : undefined
+        });
+
+        lookup[propertyName] = observable;
+        return observable;
+    }
+
+    /**
+     * Defines a computed property using ES5 getters and setters.
+     * @method defineProperty
+     * @param {object} obj The target object on which to create the property.
+     * @param {string} propertyName The name of the property to define.
+     * @param {function|object} evaluatorOrOptions The Knockout computed function or computed options object.
+     * @return {KnockoutObservable} The underlying computed observable.
+     */
+    function defineProperty(obj, propertyName, evaluatorOrOptions) {
+        var computedOptions = { owner: obj, deferEvaluation: true },
+            computed;
+
+        if (typeof evaluatorOrOptions === 'function') {
+            computedOptions.read = evaluatorOrOptions;
+        } else {
+            if ('value' in evaluatorOrOptions) {
+                system.error('For defineProperty, you must not specify a "value" for the property. You must provide a "get" function.');
+            }
+
+            if (typeof evaluatorOrOptions.get !== 'function') {
+                system.error('For defineProperty, the third parameter must be either an evaluator function, or an options object containing a function called "get".');
+            }
+
+            computedOptions.read = evaluatorOrOptions.get;
+            computedOptions.write = evaluatorOrOptions.set;
+        }
+
+        computed = ko.computed(computedOptions);
+        obj[propertyName] = computed;
+
+        return convertProperty(obj, propertyName, computed);
+    }
+
+    observableModule = function(obj, propertyName){
+        var lookup, observable, value;
+
+        if (!obj) {
+            return null;
+        }
+
+        lookup = obj.__observable__;
+        if(lookup){
+            observable = lookup[propertyName];
+            if(observable){
+                return observable;
+            }
+        }
+
+        value = obj[propertyName];
+
+        if(ko.isObservable(value)){
+            return value;
+        }
+
+        return convertProperty(obj, propertyName, value);
+    };
+
+    observableModule.defineProperty = defineProperty;
+    observableModule.convertProperty = convertProperty;
+    observableModule.convertObject = convertObject;
+
+    /**
+     * Installs the plugin into the view model binder's `beforeBind` hook so that objects are automatically converted before being bound.
+     * @method install
+     */
+    observableModule.install = function(options) {
+        var original = binder.binding;
+
+        binder.binding = function(obj, view, instruction) {
+            if(instruction.applyBindings && !instruction.skipConversion){
+                convertObject(obj);
+            }
+
+            original(obj, view);
+        };
+
+        logConversion = options.logConversion;
+    };
+
+    return observableModule;
+});
+
+/**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * Connects the history module's url and history tracking support to Durandal's activation and composition engine allowing you to easily build navigation-style applications.
+ * @module router
+ * @requires system
+ * @requires app
+ * @requires activator
+ * @requires events
+ * @requires composition
+ * @requires history
+ * @requires knockout
+ * @requires jquery
+ */
+define('plugins/router',['durandal/system', 'durandal/app', 'durandal/activator', 'durandal/events', 'durandal/composition', 'plugins/history', 'knockout', 'jquery'], function(system, app, activator, events, composition, history, ko, $) {
+    var optionalParam = /\((.*?)\)/g;
+    var namedParam = /(\(\?)?:\w+/g;
+    var splatParam = /\*\w+/g;
+    var escapeRegExp = /[\-{}\[\]+?.,\\\^$|#\s]/g;
+    var startDeferred, rootRouter;
+    var trailingSlash = /\/$/;
+
+    function routeStringToRegExp(routeString) {
+        routeString = routeString.replace(escapeRegExp, '\\$&')
+            .replace(optionalParam, '(?:$1)?')
+            .replace(namedParam, function(match, optional) {
+                return optional ? match : '([^\/]+)';
+            })
+            .replace(splatParam, '(.*?)');
+
+        return new RegExp('^' + routeString + '$');
+    }
+
+    function stripParametersFromRoute(route) {
+        var colonIndex = route.indexOf(':');
+        var length = colonIndex > 0 ? colonIndex - 1 : route.length;
+        return route.substring(0, length);
+    }
+
+    function endsWith(str, suffix) {
+        return str.indexOf(suffix, str.length - suffix.length) !== -1;
+    }
+
+    function compareArrays(first, second) {
+        if (!first || !second){
+            return false;
+        }
+
+        if (first.length != second.length) {
+            return false;
+        }
+
+        for (var i = 0, len = first.length; i < len; i++) {
+            if (first[i] != second[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @class Router
+     * @uses Events
+     */
+
+    /**
+     * Triggered when the navigation logic has completed.
+     * @event router:navigation:complete
+     * @param {object} instance The activated instance.
+     * @param {object} instruction The routing instruction.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered when the navigation has been cancelled.
+     * @event router:navigation:cancelled
+     * @param {object} instance The activated instance.
+     * @param {object} instruction The routing instruction.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered right before a route is activated.
+     * @event router:route:activating
+     * @param {object} instance The activated instance.
+     * @param {object} instruction The routing instruction.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered right before a route is configured.
+     * @event router:route:before-config
+     * @param {object} config The route config.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered just after a route is configured.
+     * @event router:route:after-config
+     * @param {object} config The route config.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered when the view for the activated instance is attached.
+     * @event router:navigation:attached
+     * @param {object} instance The activated instance.
+     * @param {object} instruction The routing instruction.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered when the composition that the activated instance participates in is complete.
+     * @event router:navigation:composition-complete
+     * @param {object} instance The activated instance.
+     * @param {object} instruction The routing instruction.
+     * @param {Router} router The router.
+     */
+
+    /**
+     * Triggered when the router does not find a matching route.
+     * @event router:route:not-found
+     * @param {string} fragment The url fragment.
+     * @param {Router} router The router.
+     */
+
+    var createRouter = function() {
+        var queue = [],
+            isProcessing = ko.observable(false),
+            currentActivation,
+            currentInstruction,
+            activeItem = activator.create();
+
+        var router = {
+            /**
+             * The route handlers that are registered. Each handler consists of a `routePattern` and a `callback`.
+             * @property {object[]} handlers
+             */
+            handlers: [],
+            /**
+             * The route configs that are registered.
+             * @property {object[]} routes
+             */
+            routes: [],
+            /**
+             * The route configurations that have been designated as displayable in a nav ui (nav:true).
+             * @property {KnockoutObservableArray} navigationModel
+             */
+            navigationModel: ko.observableArray([]),
+            /**
+             * The active item/screen based on the current navigation state.
+             * @property {Activator} activeItem
+             */
+            activeItem: activeItem,
+            /**
+             * Indicates that the router (or a child router) is currently in the process of navigating.
+             * @property {KnockoutComputed} isNavigating
+             */
+            isNavigating: ko.computed(function() {
+                var current = activeItem();
+                var processing = isProcessing();
+                var currentRouterIsProcesing = current
+                    && current.router
+                    && current.router != router
+                    && current.router.isNavigating() ? true : false;
+                return  processing || currentRouterIsProcesing;
+            }),
+            /**
+             * An observable surfacing the active routing instruction that is currently being processed or has recently finished processing.
+             * The instruction object has `config`, `fragment`, `queryString`, `params` and `queryParams` properties.
+             * @property {KnockoutObservable} activeInstruction
+             */
+            activeInstruction:ko.observable(null),
+            __router__:true
+        };
+
+        events.includeIn(router);
+
+        activeItem.settings.areSameItem = function (currentItem, newItem, currentActivationData, newActivationData) {
+            if (currentItem == newItem) {
+                return compareArrays(currentActivationData, newActivationData);
+            }
+
+            return false;
+        };
+
+        function hasChildRouter(instance) {
+            return instance.router && instance.router.parent == router;
+        }
+
+        function setCurrentInstructionRouteIsActive(flag) {
+            if (currentInstruction && currentInstruction.config.isActive) {
+                currentInstruction.config.isActive(flag)
+            }
+        }
+
+        function completeNavigation(instance, instruction) {
+            system.log('Navigation Complete', instance, instruction);
+
+            var fromModuleId = system.getModuleId(currentActivation);
+            if (fromModuleId) {
+                router.trigger('router:navigation:from:' + fromModuleId);
+            }
+
+            currentActivation = instance;
+
+            setCurrentInstructionRouteIsActive(false);
+            currentInstruction = instruction;
+            setCurrentInstructionRouteIsActive(true);
+
+            var toModuleId = system.getModuleId(currentActivation);
+            if (toModuleId) {
+                router.trigger('router:navigation:to:' + toModuleId);
+            }
+
+            if (!hasChildRouter(instance)) {
+                router.updateDocumentTitle(instance, instruction);
+            }
+
+            rootRouter.explicitNavigation = false;
+            rootRouter.navigatingBack = false;
+            router.trigger('router:navigation:complete', instance, instruction, router);
+        }
+
+        function cancelNavigation(instance, instruction) {
+            system.log('Navigation Cancelled');
+
+            router.activeInstruction(currentInstruction);
+
+            if (currentInstruction) {
+                router.navigate(currentInstruction.fragment, false);
+            }
+
+            isProcessing(false);
+            rootRouter.explicitNavigation = false;
+            rootRouter.navigatingBack = false;
+            router.trigger('router:navigation:cancelled', instance, instruction, router);
+        }
+
+        function redirect(url) {
+            system.log('Navigation Redirecting');
+
+            isProcessing(false);
+            rootRouter.explicitNavigation = false;
+            rootRouter.navigatingBack = false;
+            router.navigate(url, { trigger: true, replace: true });
+        }
+
+        function activateRoute(activator, instance, instruction) {
+            rootRouter.navigatingBack = !rootRouter.explicitNavigation && currentActivation != instruction.fragment;
+            router.trigger('router:route:activating', instance, instruction, router);
+
+            activator.activateItem(instance, instruction.params).then(function(succeeded) {
+                if (succeeded) {
+                    var previousActivation = currentActivation;
+                    completeNavigation(instance, instruction);
+
+                    if (hasChildRouter(instance)) {
+                        var fullFragment = instruction.fragment;
+                        if (instruction.queryString) {
+                            fullFragment += "?" + instruction.queryString;
+                        }
+
+                        instance.router.loadUrl(fullFragment);
+                    }
+
+                    if (previousActivation == instance) {
+                        router.attached();
+                        router.compositionComplete();
+                    }
+                } else if(activator.settings.lifecycleData && activator.settings.lifecycleData.redirect){
+                    redirect(activator.settings.lifecycleData.redirect);
+                }else{
+                    cancelNavigation(instance, instruction);
+                }
+
+                if (startDeferred) {
+                    startDeferred.resolve();
+                    startDeferred = null;
+                }
+            }).fail(function(err){
+                system.error(err);
+            });;
+        }
+
+        /**
+         * Inspects routes and modules before activation. Can be used to protect access by cancelling navigation or redirecting.
+         * @method guardRoute
+         * @param {object} instance The module instance that is about to be activated by the router.
+         * @param {object} instruction The route instruction. The instruction object has config, fragment, queryString, params and queryParams properties.
+         * @return {Promise|Boolean|String} If a boolean, determines whether or not the route should activate or be cancelled. If a string, causes a redirect to the specified route. Can also be a promise for either of these value types.
+         */
+        function handleGuardedRoute(activator, instance, instruction) {
+            var resultOrPromise = router.guardRoute(instance, instruction);
+            if (resultOrPromise) {
+                if (resultOrPromise.then) {
+                    resultOrPromise.then(function(result) {
+                        if (result) {
+                            if (system.isString(result)) {
+                                redirect(result);
+                            } else {
+                                activateRoute(activator, instance, instruction);
+                            }
+                        } else {
+                            cancelNavigation(instance, instruction);
+                        }
+                    });
+                } else {
+                    if (system.isString(resultOrPromise)) {
+                        redirect(resultOrPromise);
+                    } else {
+                        activateRoute(activator, instance, instruction);
+                    }
+                }
+            } else {
+                cancelNavigation(instance, instruction);
+            }
+        }
+
+        function ensureActivation(activator, instance, instruction) {
+            if (router.guardRoute) {
+                handleGuardedRoute(activator, instance, instruction);
+            } else {
+                activateRoute(activator, instance, instruction);
+            }
+        }
+
+        function canReuseCurrentActivation(instruction) {
+            return currentInstruction
+                && currentInstruction.config.moduleId == instruction.config.moduleId
+                && currentActivation
+                && ((currentActivation.canReuseForRoute && currentActivation.canReuseForRoute.apply(currentActivation, instruction.params))
+                || (!currentActivation.canReuseForRoute && currentActivation.router && currentActivation.router.loadUrl));
+        }
+
+        function dequeueInstruction() {
+            if (isProcessing()) {
+                return;
+            }
+
+            var instruction = queue.shift();
+            queue = [];
+
+            if (!instruction) {
+                return;
+            }
+
+            isProcessing(true);
+            router.activeInstruction(instruction);
+
+            if (canReuseCurrentActivation(instruction)) {
+                ensureActivation(activator.create(), currentActivation, instruction);
+            } else {
+                system.acquire(instruction.config.moduleId).then(function(module) {
+                    var instance = system.resolveObject(module);
+                    ensureActivation(activeItem, instance, instruction);
+                }).fail(function(err){
+                        system.error('Failed to load routed module (' + instruction.config.moduleId + '). Details: ' + err.message);
+                    });
+            }
+        }
+
+        function queueInstruction(instruction) {
+            queue.unshift(instruction);
+            dequeueInstruction();
+        }
+
+        // Given a route, and a URL fragment that it matches, return the array of
+        // extracted decoded parameters. Empty or unmatched parameters will be
+        // treated as `null` to normalize cross-browser behavior.
+        function createParams(routePattern, fragment, queryString) {
+            var params = routePattern.exec(fragment).slice(1);
+
+            for (var i = 0; i < params.length; i++) {
+                var current = params[i];
+                params[i] = current ? decodeURIComponent(current) : null;
+            }
+
+            var queryParams = router.parseQueryString(queryString);
+            if (queryParams) {
+                params.push(queryParams);
+            }
+
+            return {
+                params:params,
+                queryParams:queryParams
+            };
+        }
+
+        function configureRoute(config){
+            router.trigger('router:route:before-config', config, router);
+
+            if (!system.isRegExp(config)) {
+                config.title = config.title || router.convertRouteToTitle(config.route);
+                config.moduleId = config.moduleId || router.convertRouteToModuleId(config.route);
+                config.hash = config.hash || router.convertRouteToHash(config.route);
+                config.routePattern = routeStringToRegExp(config.route);
+            }else{
+                config.routePattern = config.route;
+            }
+
+            config.isActive = config.isActive || ko.observable(false);
+            router.trigger('router:route:after-config', config, router);
+            router.routes.push(config);
+
+            router.route(config.routePattern, function(fragment, queryString) {
+                var paramInfo = createParams(config.routePattern, fragment, queryString);
+                queueInstruction({
+                    fragment: fragment,
+                    queryString:queryString,
+                    config: config,
+                    params: paramInfo.params,
+                    queryParams:paramInfo.queryParams
+                });
+            });
+        };
+
+        function mapRoute(config) {
+            if(system.isArray(config.route)){
+                var isActive = config.isActive || ko.observable(false);
+
+                for(var i = 0, length = config.route.length; i < length; i++){
+                    var current = system.extend({}, config);
+
+                    current.route = config.route[i];
+                    current.isActive = isActive;
+
+                    if(i > 0){
+                        delete current.nav;
+                    }
+
+                    configureRoute(current);
+                }
+            }else{
+                configureRoute(config);
+            }
+
+            return router;
+        }
+
+        /**
+         * Parses a query string into an object.
+         * @method parseQueryString
+         * @param {string} queryString The query string to parse.
+         * @return {object} An object keyed according to the query string parameters.
+         */
+        router.parseQueryString = function (queryString) {
+            var queryObject, pairs;
+
+            if (!queryString) {
+                return null;
+            }
+
+            pairs = queryString.split('&');
+
+            if (pairs.length == 0) {
+                return null;
+            }
+
+            queryObject = {};
+
+            for (var i = 0; i < pairs.length; i++) {
+                var pair = pairs[i];
+                if (pair === '') {
+                    continue;
+                }
+
+                var parts = pair.split('=');
+                queryObject[parts[0]] = parts[1] && decodeURIComponent(parts[1].replace(/\+/g, ' '));
+            }
+
+            return queryObject;
+        };
+
+        /**
+         * Add a route to be tested when the url fragment changes.
+         * @method route
+         * @param {RegEx} routePattern The route pattern to test against.
+         * @param {function} callback The callback to execute when the route pattern is matched.
+         */
+        router.route = function(routePattern, callback) {
+            router.handlers.push({ routePattern: routePattern, callback: callback });
+        };
+
+        /**
+         * Attempt to load the specified URL fragment. If a route succeeds with a match, returns `true`. If no defined routes matches the fragment, returns `false`.
+         * @method loadUrl
+         * @param {string} fragment The URL fragment to find a match for.
+         * @return {boolean} True if a match was found, false otherwise.
+         */
+        router.loadUrl = function(fragment) {
+            var handlers = router.handlers,
+                queryString = null,
+                coreFragment = fragment,
+                queryIndex = fragment.indexOf('?');
+
+            if (queryIndex != -1) {
+                coreFragment = fragment.substring(0, queryIndex);
+                queryString = fragment.substr(queryIndex + 1);
+            }
+
+            if(router.relativeToParentRouter){
+                var instruction = this.parent.activeInstruction();
+                coreFragment = instruction.params.join('/');
+
+                if(coreFragment && coreFragment.charAt(0) == '/'){
+                    coreFragment = coreFragment.substr(1);
+                }
+
+                if(!coreFragment){
+                    coreFragment = '';
+                }
+
+                coreFragment = coreFragment.replace('//', '/').replace('//', '/');
+            }
+
+            coreFragment = coreFragment.replace(trailingSlash, '');
+
+            for (var i = 0; i < handlers.length; i++) {
+                var current = handlers[i];
+                if (current.routePattern.test(coreFragment)) {
+                    current.callback(coreFragment, queryString);
+                    return true;
+                }
+            }
+
+            system.log('Route Not Found');
+            router.trigger('router:route:not-found', fragment, router);
+
+            if (currentInstruction) {
+                history.navigate(currentInstruction.fragment, { trigger:false, replace:true });
+            }
+
+            rootRouter.explicitNavigation = false;
+            rootRouter.navigatingBack = false;
+
+            return false;
+        };
+
+        /**
+         * Updates the document title based on the activated module instance, the routing instruction and the app.title.
+         * @method updateDocumentTitle
+         * @param {object} instance The activated module.
+         * @param {object} instruction The routing instruction associated with the action. It has a `config` property that references the original route mapping config.
+         */
+        router.updateDocumentTitle = function(instance, instruction) {
+            if (instruction.config.title) {
+                if (app.title) {
+                    document.title = instruction.config.title + " | " + app.title;
+                } else {
+                    document.title = instruction.config.title;
+                }
+            } else if (app.title) {
+                document.title = app.title;
+            }
+        };
+
+        /**
+         * Save a fragment into the hash history, or replace the URL state if the
+         * 'replace' option is passed. You are responsible for properly URL-encoding
+         * the fragment in advance.
+         * The options object can contain `trigger: false` if you wish to not have the
+         * route callback be fired, or `replace: true`, if
+         * you wish to modify the current URL without adding an entry to the history.
+         * @method navigate
+         * @param {string} fragment The url fragment to navigate to.
+         * @param {object|boolean} options An options object with optional trigger and replace flags. You can also pass a boolean directly to set the trigger option. Trigger is `true` by default.
+         * @return {boolean} Returns true/false from loading the url.
+         */
+        router.navigate = function(fragment, options) {
+            if(fragment && fragment.indexOf('://') != -1){
+                window.location.href = fragment;
+                return true;
+            }
+
+            rootRouter.explicitNavigation = true;
+            return history.navigate(fragment, options);
+        };
+
+        /**
+         * Navigates back in the browser history.
+         * @method navigateBack
+         */
+        router.navigateBack = function() {
+            history.navigateBack();
+        };
+
+        router.attached = function() {
+            router.trigger('router:navigation:attached', currentActivation, currentInstruction, router);
+        };
+
+        router.compositionComplete = function(){
+            isProcessing(false);
+            router.trigger('router:navigation:composition-complete', currentActivation, currentInstruction, router);
+            dequeueInstruction();
+        };
+
+        /**
+         * Converts a route to a hash suitable for binding to a link's href.
+         * @method convertRouteToHash
+         * @param {string} route
+         * @return {string} The hash.
+         */
+        router.convertRouteToHash = function(route) {
+            if(router.relativeToParentRouter){
+                var instruction = router.parent.activeInstruction(),
+                    hash = instruction.config.hash + '/' + route;
+
+                if(history._hasPushState){
+                    hash = '/' + hash;
+                }
+
+                hash = hash.replace('//', '/').replace('//', '/');
+                return hash;
+            }
+
+            if(history._hasPushState){
+                return route;
+            }
+
+            return "#" + route;
+        };
+
+        /**
+         * Converts a route to a module id. This is only called if no module id is supplied as part of the route mapping.
+         * @method convertRouteToModuleId
+         * @param {string} route
+         * @return {string} The module id.
+         */
+        router.convertRouteToModuleId = function(route) {
+            return stripParametersFromRoute(route);
+        };
+
+        /**
+         * Converts a route to a displayable title. This is only called if no title is specified as part of the route mapping.
+         * @method convertRouteToTitle
+         * @param {string} route
+         * @return {string} The title.
+         */
+        router.convertRouteToTitle = function(route) {
+            var value = stripParametersFromRoute(route);
+            return value.substring(0, 1).toUpperCase() + value.substring(1);
+        };
+
+        /**
+         * Maps route patterns to modules.
+         * @method map
+         * @param {string|object|object[]} route A route, config or array of configs.
+         * @param {object} [config] The config for the specified route.
+         * @chainable
+         * @example
+ router.map([
+    { route: '', title:'Home', moduleId: 'homeScreen', nav: true },
+    { route: 'customer/:id', moduleId: 'customerDetails'}
+ ]);
+         */
+        router.map = function(route, config) {
+            if (system.isArray(route)) {
+                for (var i = 0; i < route.length; i++) {
+                    router.map(route[i]);
+                }
+
+                return router;
+            }
+
+            if (system.isString(route) || system.isRegExp(route)) {
+                if (!config) {
+                    config = {};
+                } else if (system.isString(config)) {
+                    config = { moduleId: config };
+                }
+
+                config.route = route;
+            } else {
+                config = route;
+            }
+
+            return mapRoute(config);
+        };
+
+        /**
+         * Builds an observable array designed to bind a navigation UI to. The model will exist in the `navigationModel` property.
+         * @method buildNavigationModel
+         * @param {number} defaultOrder The default order to use for navigation visible routes that don't specify an order. The default is 100 and each successive route will be one more than that.
+         * @chainable
+         */
+        router.buildNavigationModel = function(defaultOrder) {
+            var nav = [], routes = router.routes;
+            var fallbackOrder = defaultOrder || 100;
+
+            for (var i = 0; i < routes.length; i++) {
+                var current = routes[i];
+
+                if (current.nav) {
+                    if (!system.isNumber(current.nav)) {
+                        current.nav = ++fallbackOrder;
+                    }
+
+                    nav.push(current);
+                }
+            }
+
+            nav.sort(function(a, b) { return a.nav - b.nav; });
+            router.navigationModel(nav);
+
+            return router;
+        };
+
+        /**
+         * Configures how the router will handle unknown routes.
+         * @method mapUnknownRoutes
+         * @param {string|function} [config] If not supplied, then the router will map routes to modules with the same name.
+         * If a string is supplied, it represents the module id to route all unknown routes to.
+         * Finally, if config is a function, it will be called back with the route instruction containing the route info. The function can then modify the instruction by adding a moduleId and the router will take over from there.
+         * @param {string} [replaceRoute] If config is a module id, then you can optionally provide a route to replace the url with.
+         * @chainable
+         */
+        router.mapUnknownRoutes = function(config, replaceRoute) {
+            var catchAllRoute = "*catchall";
+            var catchAllPattern = routeStringToRegExp(catchAllRoute);
+
+            router.route(catchAllPattern, function (fragment, queryString) {
+                var paramInfo = createParams(catchAllPattern, fragment, queryString);
+                var instruction = {
+                    fragment: fragment,
+                    queryString: queryString,
+                    config: {
+                        route: catchAllRoute,
+                        routePattern: catchAllPattern
+                    },
+                    params: paramInfo.params,
+                    queryParams: paramInfo.queryParams
+                };
+
+                if (!config) {
+                    instruction.config.moduleId = fragment;
+                } else if (system.isString(config)) {
+                    instruction.config.moduleId = config;
+                    if(replaceRoute){
+                        history.navigate(replaceRoute, { trigger:false, replace:true });
+                    }
+                } else if (system.isFunction(config)) {
+                    var result = config(instruction);
+                    if (result && result.then) {
+                        result.then(function() {
+                            router.trigger('router:route:before-config', instruction.config, router);
+                            router.trigger('router:route:after-config', instruction.config, router);
+                            queueInstruction(instruction);
+                        });
+                        return;
+                    }
+                } else {
+                    instruction.config = config;
+                    instruction.config.route = catchAllRoute;
+                    instruction.config.routePattern = catchAllPattern;
+                }
+
+                router.trigger('router:route:before-config', instruction.config, router);
+                router.trigger('router:route:after-config', instruction.config, router);
+                queueInstruction(instruction);
+            });
+
+            return router;
+        };
+
+        /**
+         * Resets the router by removing handlers, routes, event handlers and previously configured options.
+         * @method reset
+         * @chainable
+         */
+        router.reset = function() {
+            currentInstruction = currentActivation = undefined;
+            router.handlers = [];
+            router.routes = [];
+            router.off();
+            delete router.options;
+            return router;
+        };
+
+        /**
+         * Makes all configured routes and/or module ids relative to a certain base url.
+         * @method makeRelative
+         * @param {string|object} settings If string, the value is used as the base for routes and module ids. If an object, you can specify `route` and `moduleId` separately. In place of specifying route, you can set `fromParent:true` to make routes automatically relative to the parent router's active route.
+         * @chainable
+         */
+        router.makeRelative = function(settings){
+            if(system.isString(settings)){
+                settings = {
+                    moduleId:settings,
+                    route:settings
+                };
+            }
+
+            if(settings.moduleId && !endsWith(settings.moduleId, '/')){
+                settings.moduleId += '/';
+            }
+
+            if(settings.route && !endsWith(settings.route, '/')){
+                settings.route += '/';
+            }
+
+            if(settings.fromParent){
+                router.relativeToParentRouter = true;
+            }
+
+            router.on('router:route:before-config').then(function(config){
+                if(settings.moduleId){
+                    config.moduleId = settings.moduleId + config.moduleId;
+                }
+
+                if(settings.route){
+                    if(config.route === ''){
+                        config.route = settings.route.substring(0, settings.route.length - 1);
+                    }else{
+                        config.route = settings.route + config.route;
+                    }
+                }
+            });
+
+            return router;
+        };
+
+        /**
+         * Creates a child router.
+         * @method createChildRouter
+         * @return {Router} The child router.
+         */
+        router.createChildRouter = function() {
+            var childRouter = createRouter();
+            childRouter.parent = router;
+            return childRouter;
+        };
+
+        return router;
+    };
+
+    /**
+     * @class RouterModule
+     * @extends Router
+     * @static
+     */
+    rootRouter = createRouter();
+    rootRouter.explicitNavigation = false;
+    rootRouter.navigatingBack = false;
+
+    /**
+     * Verify that the target is the current window
+     * @method targetIsThisWindow
+     * @return {boolean} True if the event's target is the current window, false otherwise.
+     */
+    rootRouter.targetIsThisWindow = function(event) {
+        var targetWindow = $(event.target).attr('target');
+        
+        if (!targetWindow ||
+            targetWindow === window.name ||
+            targetWindow === '_self' ||
+            (targetWindow === 'top' && window === window.top)) { return true; }
+        
+        return false;
+    };
+
+    /**
+     * Activates the router and the underlying history tracking mechanism.
+     * @method activate
+     * @return {Promise} A promise that resolves when the router is ready.
+     */
+    rootRouter.activate = function(options) {
+        return system.defer(function(dfd) {
+            startDeferred = dfd;
+            rootRouter.options = system.extend({ routeHandler: rootRouter.loadUrl }, rootRouter.options, options);
+
+            history.activate(rootRouter.options);
+
+            if(history._hasPushState){
+                var routes = rootRouter.routes,
+                    i = routes.length;
+
+                while(i--){
+                    var current = routes[i];
+                    current.hash = current.hash.replace('#', '');
+                }
+            }
+
+            $(document).delegate("a", 'click', function(evt){
+                if(history._hasPushState){
+                    if(!evt.altKey && !evt.ctrlKey && !evt.metaKey && !evt.shiftKey && rootRouter.targetIsThisWindow(evt)){
+                        var href = $(this).attr("href");
+
+                        // Ensure the protocol is not part of URL, meaning its relative.
+                        // Stop the event bubbling to ensure the link will not cause a page refresh.
+                        if (href != null && !(href.charAt(0) === "#" || /^[a-z]+:/i.test(href))) {
+                            rootRouter.explicitNavigation = true;
+                            evt.preventDefault();
+                            history.navigate(href);
+                        }
+                    }
+                }else{
+                    rootRouter.explicitNavigation = true;
+                }
+            });
+
+            if(history.options.silent && startDeferred){
+                startDeferred.resolve();
+                startDeferred = null;
+            }
+        }).promise();
+    };
+
+    /**
+     * Disable history, perhaps temporarily. Not useful in a real app, but possibly useful for unit testing Routers.
+     * @method deactivate
+     */
+    rootRouter.deactivate = function() {
+        history.deactivate();
+    };
+
+    /**
+     * Installs the router's custom ko binding handler.
+     * @method install
+     */
+    rootRouter.install = function(){
+        ko.bindingHandlers.router = {
+            init: function() {
+                return { controlsDescendantBindings: true };
+            },
+            update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                var settings = ko.utils.unwrapObservable(valueAccessor()) || {};
+
+                if (settings.__router__) {
+                    settings = {
+                        model:settings.activeItem(),
+                        attached:settings.attached,
+                        compositionComplete:settings.compositionComplete,
+                        activate: false
+                    };
+                } else {
+                    var theRouter = ko.utils.unwrapObservable(settings.router || viewModel.router) || rootRouter;
+                    settings.model = theRouter.activeItem();
+                    settings.attached = theRouter.attached;
+                    settings.compositionComplete = theRouter.compositionComplete;
+                    settings.activate = false;
+                }
+
+                composition.compose(element, settings, bindingContext);
+            }
+        };
+
+        ko.virtualElements.allowedBindings.router = true;
+    };
+
+    return rootRouter;
+});
+
+/**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * Serializes and deserializes data to/from JSON.
+ * @module serializer
+ * @requires system
+ */
+define('plugins/serializer',['durandal/system'], function(system) {
+    /**
+     * @class SerializerModule
+     * @static
+     */
+    return {
+        /**
+         * The name of the attribute that the serializer should use to identify an object's type.
+         * @property {string} typeAttribute
+         * @default type
+         */
+        typeAttribute: 'type',
+        /**
+         * The amount of space to use for indentation when writing out JSON.
+         * @property {string|number} space
+         * @default undefined
+         */
+        space:undefined,
+        /**
+         * The default replacer function used during serialization. By default properties starting with '_' or '$' are removed from the serialized object.
+         * @method replacer
+         * @param {string} key The object key to check.
+         * @param {object} value The object value to check.
+         * @return {object} The value to serialize.
+         */
+        replacer: function(key, value) {
+            if(key){
+                var first = key[0];
+                if(first === '_' || first === '$'){
+                    return undefined;
+                }
+            }
+
+            return value;
+        },
+        /**
+         * Serializes the object.
+         * @method serialize
+         * @param {object} object The object to serialize.
+         * @param {object} [settings] Settings can specify a replacer or space to override the serializer defaults.
+         * @return {string} The JSON string.
+         */
+        serialize: function(object, settings) {
+            settings = (settings === undefined) ? {} : settings;
+
+            if(system.isString(settings) || system.isNumber(settings)) {
+                settings = { space: settings };
+            }
+
+            return JSON.stringify(object, settings.replacer || this.replacer, settings.space || this.space);
+        },
+        /**
+         * Gets the type id for an object instance, using the configured `typeAttribute`.
+         * @method getTypeId
+         * @param {object} object The object to serialize.
+         * @return {string} The type.
+         */
+        getTypeId: function(object) {
+            if (object) {
+                return object[this.typeAttribute];
+            }
+
+            return undefined;
+        },
+        /**
+         * Maps type ids to object constructor functions. Keys are type ids and values are functions.
+         * @property {object} typeMap.
+         */
+        typeMap: {},
+        /**
+         * Adds a type id/constructor function mampping to the `typeMap`.
+         * @method registerType
+         * @param {string} typeId The type id.
+         * @param {function} constructor The constructor.
+         */
+        registerType: function() {
+            var first = arguments[0];
+
+            if (arguments.length == 1) {
+                var id = first[this.typeAttribute] || system.getModuleId(first);
+                this.typeMap[id] = first;
+            } else {
+                this.typeMap[first] = arguments[1];
+            }
+        },
+        /**
+         * The default reviver function used during deserialization. By default is detects type properties on objects and uses them to re-construct the correct object using the provided constructor mapping.
+         * @method reviver
+         * @param {string} key The attribute key.
+         * @param {object} value The object value associated with the key.
+         * @param {function} getTypeId A custom function used to get the type id from a value.
+         * @param {object} getConstructor A custom function used to get the constructor function associated with a type id.
+         * @return {object} The value.
+         */
+        reviver: function(key, value, getTypeId, getConstructor) {
+            var typeId = getTypeId(value);
+            if (typeId) {
+                var ctor = getConstructor(typeId);
+                if (ctor) {
+                    if (ctor.fromJSON) {
+                        return ctor.fromJSON(value);
+                    }
+
+                    return new ctor(value);
+                }
+            }
+
+            return value;
+        },
+        /**
+         * Deserialize the JSON.
+         * @method deserialize
+         * @param {string} text The JSON string.
+         * @param {object} [settings] Settings can specify a reviver, getTypeId function or getConstructor function.
+         * @return {object} The deserialized object.
+         */
+        deserialize: function(text, settings) {
+            var that = this;
+            settings = settings || {};
+
+            var getTypeId = settings.getTypeId || function(object) { return that.getTypeId(object); };
+            var getConstructor = settings.getConstructor || function(id) { return that.typeMap[id]; };
+            var reviver = settings.reviver || function(key, value) { return that.reviver(key, value, getTypeId, getConstructor); };
+
+            return JSON.parse(text, reviver);
+        }
+    };
+});
+
+/**
+ * Durandal 2.0.1 Copyright (c) 2012 Blue Spire Consulting, Inc. All Rights Reserved.
+ * Available via the MIT license.
+ * see: http://durandaljs.com or https://github.com/BlueSpire/Durandal for details.
+ */
+/**
+ * Layers the widget sugar on top of the composition system.
+ * @module widget
+ * @requires system
+ * @requires composition
+ * @requires jquery
+ * @requires knockout
+ */
+define('plugins/widget',['durandal/system', 'durandal/composition', 'jquery', 'knockout'], function(system, composition, $, ko) {
+    var kindModuleMaps = {},
+        kindViewMaps = {},
+        bindableSettings = ['model', 'view', 'kind'],
+        widgetDataKey = 'durandal-widget-data';
+
+    function extractParts(element, settings){
+        var data = ko.utils.domData.get(element, widgetDataKey);
+
+        if(!data){
+            data = {
+                parts:composition.cloneNodes(ko.virtualElements.childNodes(element))
+            };
+
+            ko.virtualElements.emptyNode(element);
+            ko.utils.domData.set(element, widgetDataKey, data);
+        }
+
+        settings.parts = data.parts;
+    }
+
+    /**
+     * @class WidgetModule
+     * @static
+     */
+    var widget = {
+        getSettings: function(valueAccessor) {
+            var settings = ko.utils.unwrapObservable(valueAccessor()) || {};
+
+            if (system.isString(settings)) {
+                return { kind: settings };
+            }
+
+            for (var attrName in settings) {
+                if (ko.utils.arrayIndexOf(bindableSettings, attrName) != -1) {
+                    settings[attrName] = ko.utils.unwrapObservable(settings[attrName]);
+                } else {
+                    settings[attrName] = settings[attrName];
+                }
+            }
+
+            return settings;
+        },
+        /**
+         * Creates a ko binding handler for the specified kind.
+         * @method registerKind
+         * @param {string} kind The kind to create a custom binding handler for.
+         */
+        registerKind: function(kind) {
+            ko.bindingHandlers[kind] = {
+                init: function() {
+                    return { controlsDescendantBindings: true };
+                },
+                update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    var settings = widget.getSettings(valueAccessor);
+                    settings.kind = kind;
+                    extractParts(element, settings);
+                    widget.create(element, settings, bindingContext, true);
+                }
+            };
+
+            ko.virtualElements.allowedBindings[kind] = true;
+            composition.composeBindings.push(kind + ':');
+        },
+        /**
+         * Maps views and module to the kind identifier if a non-standard pattern is desired.
+         * @method mapKind
+         * @param {string} kind The kind name.
+         * @param {string} [viewId] The unconventional view id to map the kind to.
+         * @param {string} [moduleId] The unconventional module id to map the kind to.
+         */
+        mapKind: function(kind, viewId, moduleId) {
+            if (viewId) {
+                kindViewMaps[kind] = viewId;
+            }
+
+            if (moduleId) {
+                kindModuleMaps[kind] = moduleId;
+            }
+        },
+        /**
+         * Maps a kind name to it's module id. First it looks up a custom mapped kind, then falls back to `convertKindToModulePath`.
+         * @method mapKindToModuleId
+         * @param {string} kind The kind name.
+         * @return {string} The module id.
+         */
+        mapKindToModuleId: function(kind) {
+            return kindModuleMaps[kind] || widget.convertKindToModulePath(kind);
+        },
+        /**
+         * Converts a kind name to it's module path. Used to conventionally map kinds who aren't explicitly mapped through `mapKind`.
+         * @method convertKindToModulePath
+         * @param {string} kind The kind name.
+         * @return {string} The module path.
+         */
+        convertKindToModulePath: function(kind) {
+            return 'widgets/' + kind + '/viewmodel';
+        },
+        /**
+         * Maps a kind name to it's view id. First it looks up a custom mapped kind, then falls back to `convertKindToViewPath`.
+         * @method mapKindToViewId
+         * @param {string} kind The kind name.
+         * @return {string} The view id.
+         */
+        mapKindToViewId: function(kind) {
+            return kindViewMaps[kind] || widget.convertKindToViewPath(kind);
+        },
+        /**
+         * Converts a kind name to it's view id. Used to conventionally map kinds who aren't explicitly mapped through `mapKind`.
+         * @method convertKindToViewPath
+         * @param {string} kind The kind name.
+         * @return {string} The view id.
+         */
+        convertKindToViewPath: function(kind) {
+            return 'widgets/' + kind + '/view';
+        },
+        createCompositionSettings: function(element, settings) {
+            if (!settings.model) {
+                settings.model = this.mapKindToModuleId(settings.kind);
+            }
+
+            if (!settings.view) {
+                settings.view = this.mapKindToViewId(settings.kind);
+            }
+
+            settings.preserveContext = true;
+            settings.activate = true;
+            settings.activationData = settings;
+            settings.mode = 'templated';
+
+            return settings;
+        },
+        /**
+         * Creates a widget.
+         * @method create
+         * @param {DOMElement} element The DOMElement or knockout virtual element that serves as the target element for the widget.
+         * @param {object} settings The widget settings.
+         * @param {object} [bindingContext] The current binding context.
+         */
+        create: function(element, settings, bindingContext, fromBinding) {
+            if(!fromBinding){
+                settings = widget.getSettings(function() { return settings; }, element);
+            }
+
+            var compositionSettings = widget.createCompositionSettings(element, settings);
+
+            composition.compose(element, compositionSettings, bindingContext);
+        },
+        /**
+         * Installs the widget module by adding the widget binding handler and optionally registering kinds.
+         * @method install
+         * @param {object} config The module config. Add a `kinds` array with the names of widgets to automatically register. You can also specify a `bindingName` if you wish to use another name for the widget binding, such as "control" for example.
+         */
+        install:function(config){
+            config.bindingName = config.bindingName || 'widget';
+
+            if(config.kinds){
+                var toRegister = config.kinds;
+
+                for(var i = 0; i < toRegister.length; i++){
+                    widget.registerKind(toRegister[i]);
+                }
+            }
+
+            ko.bindingHandlers[config.bindingName] = {
+                init: function() {
+                    return { controlsDescendantBindings: true };
+                },
+                update: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    var settings = widget.getSettings(valueAccessor);
+                    extractParts(element, settings);
+                    widget.create(element, settings, bindingContext, true);
+                }
+            };
+
+            composition.composeBindings.push(config.bindingName + ':');
+            ko.virtualElements.allowedBindings[config.bindingName] = true;
+        }
+    };
+
+    return widget;
+});
+
+/**
  * @license RequireJS text 2.0.3 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/requirejs/text for details

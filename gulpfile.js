@@ -26,8 +26,7 @@ var generateTestTasks = function(){
             testNum++;
             var taskName = 'simpleOutput' + testNum;
             tasks[taskName] = {
-                baseDir: baseDir,
-                extraModules: testOptions.extraModules
+                baseDir: baseDir
             };
         });
     };
@@ -41,7 +40,8 @@ var generateTestTasks = function(){
                 tasks[taskName] = {
                     baseDir: baseDir,
                     require: require,
-                    extraModules: testOptions.extraModules
+                    extraModules: testOptions.extraModules,
+                    durandalDynamicModules: false
                 };
             });
         });
@@ -57,7 +57,8 @@ var generateTestTasks = function(){
                     baseDir: baseDir,
                     almond: true,
                     require: require,
-                    extraModules: testOptions.extraModules
+                    extraModules: testOptions.extraModules,
+                    durandalDynamicModules: false
                 };
             });
         });
@@ -72,8 +73,7 @@ var generateTestTasks = function(){
                 tasks[taskName] = {
                     baseDir: baseDir,
                     almond: almond,
-                    minify: true,
-                    extraModules: testOptions.extraModules
+                    minify: true
                 };
             });
         });
@@ -99,7 +99,8 @@ var generateTestTasks = function(){
                 main: 'main2.js',
                 output: 'main.js',
                 almond: almond,
-                require: 'main2'
+                require: 'main2',
+                durandalDynamicModules: false
             };
 
             taskName = 'pathTestNested' + testNum;

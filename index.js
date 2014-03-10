@@ -10,10 +10,16 @@ var PLUGIN_NAME = 'gulp-durandaljs';
 
 module.exports = function gulpDurandaljs(userOptions){
     var _s = es.pause(),
+
+        durandalDynamicTransitions = ['transitions/entrance'],
+        durandalDynamicPlugins = ['plugins/dialog', 'plugins/history','plugins/http',
+            'plugins/observable', 'plugins/router', 'plugins/serializer', 'plugins/widget'],
+
         defOptions = {
             baseDir: 'app',
             main: 'main.js',
             extraModules: [],
+            durandalDynamicModules: true,
             verbose : false,
             output: undefined,
             minify: false,
@@ -28,6 +34,8 @@ module.exports = function gulpDurandaljs(userOptions){
         baseDir =  options.baseDir,
 
         mainFile = path.join(baseDir, options.main),
+
+        mainFileContent = fs.readFileSync(mainFile, {encoding: 'utf-8'}),
 
         almondWrapper = (function(){
             var almond = options.almond,
@@ -53,9 +61,15 @@ module.exports = function gulpDurandaljs(userOptions){
                 jsModules = jsFiles.map(relativeToBaseDir).map(stripExtension),
                 textFiles = _.flatten(_.map(options.textModuleExtensions, function(ext){return expand('/**/*'+ext);})),
                 textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
-                scannedModules = {js: jsModules, text: textModules};
+                scannedModules = {js: jsModules, text: textModules},
+                dynamicModules = options.durandalDynamicModules ? [].concat(
+                    mainFileContent.match(/['"]?plugins['"]?\s.*?:/i) ? durandalDynamicPlugins : [],
+                    mainFileContent.match(/['"]?transitions['"]?\s.*?:/i) ? durandalDynamicTransitions: []
+                ) : [];
 
-            return _.flatten([scannedModules.js, options.extraModules || [], scannedModules.text])
+            if(options.verbose){console.log('Gulpfile added the following modules dynamicly: ' + dynamicModules)}
+
+            return _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
                 .filter(options.moduleFilter).map(fixSlashes);
         })(),
 
