@@ -1,6 +1,6 @@
 # gulp-durandal
 
-> A [gulp](http://gulpjs.com/) plugin for building [Durandal](http://durandaljs.com) projects.
+> A [Gulp](http://gulpjs.com/) plugin for building [Durandal](http://durandaljs.com) projects.
 
 >Both scripts and views are compiled into a single output file.
 
