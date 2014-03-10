@@ -1,7 +1,7 @@
 {
   "name": "gulp-durandal",
   "description": "A gulp plugin for building durandaljs projects.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "homepage": "https://github.com/welldone-software/gulp-durandal",
   "author": {
     "name": "Welldone Software Solutions Ltd.",
@@ -47,5 +47,18 @@
     "res",
     "LICENSE",
     "index.js"
+  ],
+  "keywords": [
+    "gulpplugin",
+    "gulp",
+    "durandal",
+    "knockout",
+    "build",
+    "builder",
+    "generate",
+    "jquery",
+    "require",
+    "requirejs",
+    "almond"
   ]
 }
