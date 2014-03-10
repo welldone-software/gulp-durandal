@@ -107,5 +107,9 @@ module.exports = function gulpDurandaljs(userOptions){
 
     requirejs.optimize(rjsConfig, null, errCb);
 
+    _s.on('error', function(e){
+        gutil.log('Durandal ' + gutil.colors.red(e.message));
+    });
+    
     return _s;
 };
