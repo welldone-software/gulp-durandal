@@ -6,7 +6,14 @@
 
 >No double maintenance of path mapping. Allows various code layouts (bower, app.net etc), using the paths already configured in you main.js.
 
->Minimalistic and simple. No need to be expert with r.js's 60+ options.
+>Minimalistic and simple. No need to be expert with r.js's 60+ options. In many cases, the following should be enough:
+
+>```js
+>gulp.task('durandal', function(){
+>    durandal()
+>       .pipe(gulp.dest('dir/to/save/the/output'));
+>}
+>```
 
 ## Getting Started
 This plugin requires Gulp `~3.5.5`
