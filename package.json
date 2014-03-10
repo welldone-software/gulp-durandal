@@ -33,7 +33,9 @@
     "gulp-clean": "^0.2.4",
     "gulp-load-plugins": "^0.3.0",
     "gulp-print": "^1.0.3",
-    "gulp-run-sequence": "^0.3.2"
+    "gulp-livereload": "^1.2.0",
+    "gulp-html-replace": "^0.2.0",
+    "gulp-rename": "^1.2.0"
   },
   "dependencies": {
     "lodash": "^2.4.1",
