@@ -173,7 +173,7 @@ The `tests` and `examples` folders contains several examples, for both simple an
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [Gulp](http://gulpjs.com/).
 
 ## Release History
- - 0.9.0 - Basic features, tests and samples in place. Deployed on [npm](https://www.npmjs.org/package/gulp-durandal).
+ - 1.0.0 - Basic features, tests and samples in place. Deployed on [npm](https://www.npmjs.org/package/gulp-durandal).
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)
