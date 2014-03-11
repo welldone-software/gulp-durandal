@@ -6,28 +6,30 @@ var fs = require('fs'),
     _ = require('lodash')._,
     gutil = require('gulp-util');
 
-var PLUGIN_NAME = 'gulp-durandaljs';
+var PLUGIN_NAME = 'gulp-durandaljs',
+
+    durandalDynamicTransitions = ['transitions/entrance'],
+    
+    durandalDynamicPlugins = ['plugins/dialog', 'plugins/history','plugins/http',
+        'plugins/observable', 'plugins/router', 'plugins/serializer', 'plugins/widget'],
+
+    defOptions = {
+        baseDir: 'app',
+        main: 'main.js',
+        extraModules: [],
+        durandalDynamicModules: true,
+        verbose : false,
+        output: undefined,
+        minify: false,
+        require : undefined,
+        almond: false,
+        moduleFilter: function(m){return true;},
+        textModuleExtensions : ['.json', '.html', '.txt']
+    };
+
 
 module.exports = function gulpDurandaljs(userOptions){
     var _s = es.pause(),
-
-        durandalDynamicTransitions = ['transitions/entrance'],
-        durandalDynamicPlugins = ['plugins/dialog', 'plugins/history','plugins/http',
-            'plugins/observable', 'plugins/router', 'plugins/serializer', 'plugins/widget'],
-
-        defOptions = {
-            baseDir: 'app',
-            main: 'main.js',
-            extraModules: [],
-            durandalDynamicModules: true,
-            verbose : false,
-            output: undefined,
-            minify: false,
-            require : undefined,
-            almond: false,
-            moduleFilter: function(m){return true;},
-            textModuleExtensions : ['.json', '.html', '.txt']
-        },
 
         options = _.defaults(userOptions, defOptions),
 
@@ -63,8 +65,8 @@ module.exports = function gulpDurandaljs(userOptions){
                 textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
                 scannedModules = {js: jsModules, text: textModules},
                 dynamicModules = options.durandalDynamicModules ? [].concat(
-                    mainFileContent.match(/['"]?plugins['"]?\s*?:/) ? durandalDynamicPlugins : [],
-                    mainFileContent.match(/['"]?transitions['"]?\s*?:/) ? durandalDynamicTransitions: []
+                    mainFileContent.match(/['"]?plugins['"]?\s*:/) ? durandalDynamicPlugins : [],
+                    mainFileContent.match(/['"]?transitions['"]?\s*:/) ? durandalDynamicTransitions: []
                 ) : [];
 
             if(options.verbose && dynamicModules.length){
@@ -87,8 +89,11 @@ module.exports = function gulpDurandaljs(userOptions){
             }
             return undefined;
         })(),
+        
         output = options.output || path.basename(mainFile),
+        
         mapOutput = output + '.map',
+        
         rjsCb = function(text, sourceMapText){
             _s.resume();
 
@@ -108,6 +113,7 @@ module.exports = function gulpDurandaljs(userOptions){
 
             _s.end();
         },
+        
         errCb = function(err){
             _s.resume();
             _s.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
