@@ -66,19 +66,18 @@ module.exports = function gulpDurandaljs(userOptions){
                 textFiles = _.flatten(_.map(options.textModuleExtensions, function(ext){return expand('/**/*'+ext);})),
                 textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
                 scannedModules = {js: jsModules, text: textModules};
+                
             return scannedModules;
         }),
 
         allModules = (function(){
-            
             var fixSlashes = function(p){ return p.replace(new RegExp('\\\\','g'),'/'); };
                 modules = 
                     _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
                     .map(fixSlashes);
-                    .filter(options.moduleFilter)
+                    .filter(options.moduleFilter);
 
             return _.unique(modules);
-
         })(),
 
         insertRequireModules = (function(){
