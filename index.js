@@ -49,7 +49,7 @@ module.exports = function gulpDurandaljs(userOptions){
 
         })(),
 
-        resolveDynamicModules = (function(){
+        dynamicModules = (function(){
             var  mainFileContent = fs.readFileSync(mainFile, {encoding: 'utf-8'}),
                  plugins = mainFileContent.match(/['"]?plugins['"]?\s*:/) ? durandalDynamicPlugins : [],
                  transitions = mainFileContent.match(/['"]?transitions['"]?\s*:/) ? durandalDynamicTransitions : [];
@@ -57,24 +57,25 @@ module.exports = function gulpDurandaljs(userOptions){
             return _.flatten(plugins, transitions);
         }),
 
-        allModules = (function(){
+        scannedModuels = (function(){
             var stripExtension = function(p){ return p.substr(0, p.length - path.extname(p).length); },
-                fixSlashes = function(p){ return p.replace(new RegExp('\\\\','g'),'/'); },
                 expand = function(p){ return glob.sync(path.normalize(path.join(baseDir, p))); },
                 relativeToBaseDir = path.relative.bind(path, baseDir),
                 jsFiles = _.unique( _.flatten([ mainFile, expand('/**/*.js') ])),
                 jsModules = jsFiles.map(relativeToBaseDir).map(stripExtension),
                 textFiles = _.flatten(_.map(options.textModuleExtensions, function(ext){return expand('/**/*'+ext);})),
                 textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
-                scannedModules = {js: jsModules, text: textModules},
-                dynamicModules = resolveDynamicModules();
+                scannedModules = {js: jsModules, text: textModules};
+            return scannedModules;
+        }),
 
-            if(options.verbose && dynamicModules.length){
-                gutil.log('Durandal added dynamicModules: ' + dynamicModules.join(','));
-            }
-
-            var modules = _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
-                .filter(options.moduleFilter).map(fixSlashes);
+        allModules = (function(){
+            
+            var fixSlashes = function(p){ return p.replace(new RegExp('\\\\','g'),'/'); };
+                modules = 
+                    _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
+                    .map(fixSlashes);
+                    .filter(options.moduleFilter)
 
             return _.unique(modules);
 
@@ -94,7 +95,7 @@ module.exports = function gulpDurandaljs(userOptions){
 
             var output = options.output || path.basename(mainFile),
                 mapOutput = output + '.map';
-                
+
             _s.resume();
 
             text += '//# sourceMappingURL=' + path.basename(mapOutput);
