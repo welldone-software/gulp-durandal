@@ -7,9 +7,11 @@ var fs = require('fs'),
     gutil = require('gulp-util');
 
 var PLUGIN_NAME = 'gulp-durandaljs',
+
     durandalDynamicTransitions = ['transitions/entrance'],
     durandalDynamicPlugins = ['plugins/dialog', 'plugins/history','plugins/http',
         'plugins/observable', 'plugins/router', 'plugins/serializer', 'plugins/widget'],
+
     defOptions = {
         baseDir: 'app',
         main: 'main.js',
@@ -28,7 +30,7 @@ var PLUGIN_NAME = 'gulp-durandaljs',
 module.exports = function gulpDurandaljs(userOptions){
     var _s = es.pause(),
 
-        options = _.defaults(userOptions, defOptions),
+        options = _.defaults(userOptions || {}, defOptions),
 
         baseDir =  options.baseDir,
 
@@ -54,10 +56,10 @@ module.exports = function gulpDurandaljs(userOptions){
                  plugins = mainFileContent.match(/['"]?plugins['"]?\s*:/) ? durandalDynamicPlugins : [],
                  transitions = mainFileContent.match(/['"]?transitions['"]?\s*:/) ? durandalDynamicTransitions : [];
 
-            return _.flatten(plugins, transitions);
-        }),
+            return [].concat(plugins, transitions);
+        })(),
 
-        scannedModuels = (function(){
+        scannedModules = (function(){
             var stripExtension = function(p){ return p.substr(0, p.length - path.extname(p).length); },
                 expand = function(p){ return glob.sync(path.normalize(path.join(baseDir, p))); },
                 relativeToBaseDir = path.relative.bind(path, baseDir),
@@ -66,15 +68,15 @@ module.exports = function gulpDurandaljs(userOptions){
                 textFiles = _.flatten(_.map(options.textModuleExtensions, function(ext){return expand('/**/*'+ext);})),
                 textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
                 scannedModules = {js: jsModules, text: textModules};
-                
+
             return scannedModules;
-        }),
+        })(),
 
         allModules = (function(){
-            var fixSlashes = function(p){ return p.replace(new RegExp('\\\\','g'),'/'); };
-                modules = 
+            var fixSlashes = function(p){ return p.replace(new RegExp('\\\\','g'),'/');},
+                modules =
                     _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
-                    .map(fixSlashes);
+                    .map(fixSlashes)
                     .filter(options.moduleFilter);
 
             return _.unique(modules);

@@ -15078,3 +15078,4 @@ define('text',['module'], function (module) {
 
 define('text!shell.html',[],function () { return '<section>\r\n    <h2>Hello! What is your name?</h2>\r\n    <form class="form-inline">\r\n        <fieldset>\r\n            <label>Name</label>\r\n            <input type="text" data-bind="value: name, valueUpdate: \'afterkeydown\'"/>\r\n            <button type="submit" class="btn" data-bind="click: sayHello, enable: name">Click Me</button>\r\n        </fieldset>\r\n    </form>\r\n</section>';});
 
+//# sourceMappingURL=main.js.map

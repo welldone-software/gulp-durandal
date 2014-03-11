@@ -15079,3 +15079,4 @@ define('text!shell.html',[],function () { return '<section>\r\n    <h2>Hello! Wh
 
 
 require(["main2"]);
+//# sourceMappingURL=main.js.map
