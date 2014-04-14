@@ -176,7 +176,9 @@ If this is the case, then the `rjsConfigAdapter` is for you. But be warned, you 
 
 ```js
 function(rjsConfig){
-  rjsConfig
+  rjsConfig.pragmas: {
+        fooExclude: true
+  };
   return rjsConfig;
 }
 ```
