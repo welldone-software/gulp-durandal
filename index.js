@@ -136,7 +136,7 @@ module.exports = function gulpDurandaljs(userOptions){
         wrap: almondWrapper
     };
 
-    rjsConfig = _.defaults(options.rjsConfigOverrides, rjsConfig);
+    rjsConfig = options.rjsConfigAdapter(rjsConfig);
 
     requirejs.optimize(rjsConfig, null, errCb);
 

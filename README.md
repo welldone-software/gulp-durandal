@@ -168,11 +168,18 @@ function(moduleName){
 Type: `Function`
 Default value: `function(rjsConfig){return rjsConfig;}`
 
-An advanced argument that allows complete control over the parameters passed to the rjs optimizer, adding any unused parameter and even overriding prameters caluculated and defined by the plugin, just before they are passed to the optimizer.
+An advanced argument that allows complete control over the parameters passed to the rjs optimizer. You can add new fields, remove and change any parameter caluculated and defined by the plugin, just before the config object is passed to the optimizer.
 
 The 'gulp-durandal' plugin tries to hide the complexity of `rjs` optimizer from its users, promote prefering convenstion over configuration and simply work. However, sometimes you just have to have more control over the process and you are willing to trade simplicity for flexibily.
 
-If this is the case, then the `rjsConfigOverrides` is for you. But be warned, you probably need to understand not only the rjs params but also the internals of the plugin in order to use it.
+If this is the case, then the `rjsConfigAdapter` is for you. But be warned, you probably need to understand not only the rjs params but also the internals of the plugin in order to use it.
+
+```js
+function(rjsConfig){
+  rjsConfig
+  return rjsConfig;
+}
+```
 
 ### Usage Examples
 
