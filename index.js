@@ -21,6 +21,7 @@ var PLUGIN_NAME = 'gulp-durandaljs',
         output: undefined,
         minify: false,
         require : undefined,
+        rjsConfigAdapter : function(cfg){return cfg;},
         almond: false,
         moduleFilter: function(m){return true;},
         textModuleExtensions : ['.json', '.html', '.txt']
@@ -135,7 +136,7 @@ module.exports = function gulpDurandaljs(userOptions){
         wrap: almondWrapper
     };
 
-    rjsConfig = _.defaults(options.requirejs, rjsConfig);
+    rjsConfig = _.defaults(options.rjsConfigOverrides, rjsConfig);
 
     requirejs.optimize(rjsConfig, null, errCb);
 
