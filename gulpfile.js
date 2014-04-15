@@ -130,6 +130,21 @@ var generateTestTasks = function(){
         };
     };
 
+    var adapterTest = function(tasks){
+        var testNum = 0;
+        _.each(testOptions.baseDir, function(baseDir){
+            testNum++;
+            var taskName = 'adapterTest' + testNum;
+            tasks[taskName] = {
+                baseDir: baseDir,
+                rjsConfigAdapter: function(rjsConfig){
+                    rjsConfig.generateSourceMaps = false;
+                    return rjsConfig;
+                }
+            };
+        });
+    };
+
     //comment out not needed tests
     testGenerators.push(simpleOutput);
     testGenerators.push(requireOutput);
@@ -137,6 +152,7 @@ var generateTestTasks = function(){
     testGenerators.push(minifyTest);
     testGenerators.push(pathTest);
     testGenerators.push(errorTest);
+    testGenerators.push(adapterTest);
 
     _.each(testGenerators, function(generator){
         generator(tasks);
