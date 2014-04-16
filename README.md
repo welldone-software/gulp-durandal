@@ -192,6 +192,7 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
 
 ## Release History
  - 1.0.0 - Basic features, tests and samples in place. Deployed on [npm](https://www.npmjs.org/package/gulp-durandal).
+ - 1.1.0 - Added rjsConfigAdapter option to allow full control over the config object passed to the rjs optimizer.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)
