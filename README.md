@@ -2,6 +2,8 @@
 
 > A [Gulp](http://gulpjs.com/) plugin for building [Durandal](http://durandaljs.com) projects.
 
+>[Integrated](http://durandaljs.com/documentation/Gulp.html) into the official Durandal project.
+
 >Both scripts and views are compiled into a single output file.
 
 >No double maintenance of path mapping. Allows various code layouts (bower, app.net etc), using the paths already configured in your `main.js`.
@@ -49,7 +51,7 @@ In your project's Gulpfile, lunch the plugin inside a task with the wanted confi
 var durandal = require('gulp-durandal');
 
 gulp.task('durandal', function(){
-    durandal({
+    return durandal({
             baseDir: 'app',   //same as default, so not really required.
             main: 'main.js',  //same as default, so not really required.
             output: 'main.js', //same as default, so not really required.
@@ -119,7 +121,7 @@ Default value: `false`
 
 True to wrap the generated code and include a Durandal specific version of AlmondJS, to replace the need for the much bigger requiresjs, and create a single and self sufficient output file. (Read more about [AlmondJS](https://github.com/jrburke/almond) and the [Durandal version](https://github.com/BlueSpire/almond))
 
-If the value is a string, it should be the path to an almond script, relative to the grunt cwd. The result is similar to setting the value to `true`, expect the almond script inserted is the one specified here and not the script that comes bundled with the task.
+If the value is a string, it should be the path to an almond script, relative to the gulp cwd. The result is similar to setting the value to `true`, expect the almond script inserted is the one specified here and not the script that comes bundled with the task.
 
 #### options.extraModules
 Type: `String[]`
@@ -168,9 +170,9 @@ function(moduleName){
 Type: `Function`
 Default value: `function(rjsConfig){return rjsConfig;}`
 
-An advanced argument that allows complete control over the parameters passed to the rjs optimizer. You can add new fields, remove and change any parameter caluculated and defined by the plugin, just before the config object is passed to the optimizer.
+An advanced argument that allows complete control over the parameters passed to the [rjs optimizer](http://requirejs.org/docs/optimization.html). You can add new fields, remove and change any parameter calculated and defined by the plugin, just before the config object is passed to the optimizer.
 
-The 'gulp-durandal' plugin tries to hide the complexity of `rjs` optimizer from its users, promote prefering convenstion over configuration and simply work. However, sometimes you just have to have more control over the process and you are willing to trade simplicity for flexibily.
+The 'gulp-durandal' plugin tries to hide the complexity of `rjs` optimizer from its users, promote preferring convention over configuration and simply work. However, sometimes you just have to have more control over the process and you are willing to trade simplicity for flexibility.
 
 If this is the case, then the `rjsConfigAdapter` is for you. But be warned, you probably need to understand not only the rjs params but also the internals of the plugin in order to use it.
 
@@ -193,6 +195,7 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
 ## Release History
  - 1.0.0 - Basic features, tests and samples in place. Deployed on [npm](https://www.npmjs.org/package/gulp-durandal).
  - 1.1.0 - Added rjsConfigAdapter option to allow full control over the config object passed to the rjs optimizer.
+ - 1.1.1 - Improved plugin stream and fixed a bug in case of rjs error.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)

@@ -1,7 +1,7 @@
 {
   "name": "gulp-durandal",
   "description": "A gulp plugin for building durandaljs projects.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "homepage": "https://github.com/welldone-software/gulp-durandal",
   "author": {
     "name": "Welldone Software Solutions Ltd.",
