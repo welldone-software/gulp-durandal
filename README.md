@@ -15,7 +15,7 @@
 >}
 >```
 
-Also see the official [Durandal Gulp Plugin docs] (http://durandaljs.com/documentation/Gulp.html).
+Also see the [Gulp Plugin docs] (http://durandaljs.com/documentation/Gulp.html) on the official Durandal site.
 ## Getting Started
 This plugin requires Gulp `~3.5.5`
 
