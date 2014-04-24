@@ -29,7 +29,7 @@ var PLUGIN_NAME = 'gulp-durandaljs',
 
 
 module.exports = function gulpDurandaljs(userOptions){
-    var _s = es.pause(),
+    var stream = es.through(),
 
         options = _.defaults(userOptions || {}, defOptions),
 
@@ -98,29 +98,25 @@ module.exports = function gulpDurandaljs(userOptions){
             var output = options.output || path.basename(mainFile),
                 mapOutput = output + '.map';
 
-            _s.resume();
-
             text += '//# sourceMappingURL=' + path.basename(mapOutput);
 
-            _s.write(new gutil.File({
+            stream.write(new gutil.File({
                 path: output,
                 contents: new Buffer(text)
             }));
 
             if(sourceMapText){
-                _s.write(new gutil.File({
+                stream.write(new gutil.File({
                     path: mapOutput,
                     contents: new Buffer(sourceMapText)
                 }));
             }
 
-            _s.end();
+            stream.end();
         },
         
         errCb = function(err){
-            _s.resume();
-            _s.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
-            _s.end();
+            stream.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
         };
 
     var rjsConfig = {
@@ -140,9 +136,10 @@ module.exports = function gulpDurandaljs(userOptions){
 
     requirejs.optimize(rjsConfig, null, errCb);
 
-    _s.on('error', function(e){
+    stream.on('error', function(e){
         gutil.log('Durandal ' + gutil.colors.red(e.message));
+        stream.end();
     });
     
-    return _s;
+    return stream;
 };

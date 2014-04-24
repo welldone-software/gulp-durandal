@@ -163,12 +163,10 @@ var generateTestTasks = function(){
 
 var testTasks = generateTestTasks();
 _.each(testTasks, function(task, taskName){
-    gulp.task(taskName, function(cb){
-        externalPlugins.durandal(task)
-            .on('error', cb)
+    gulp.task(taskName, function(){
+        return externalPlugins.durandal(task)
             .pipe(plugins.print(function(filename){return taskName + ': ' + filename;}))
-            .pipe(gulp.dest(outputDir + '/' + taskName))
-            .on('end', cb);
+            .pipe(gulp.dest(outputDir + '/' + taskName));
     });
 });
 
