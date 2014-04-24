@@ -35,15 +35,15 @@
     "gulp-print": "^1.0.3",
     "gulp-livereload": "^1.2.0",
     "gulp-html-replace": "^0.2.0",
-    "gulp-rename": "^1.2.0"
+    "gulp-rename": "^1.2.0",
+    "run-sequence": "^0.3.6"
   },
   "dependencies": {
     "lodash": "^2.4.1",
     "requirejs": "^2.1.11",
     "glob": "^3.2.9",
     "event-stream": "^3.1.0",
-    "gulp-util": "^2.2.14",
-    "gulp-load-plugins": "^0.3.0"
+    "gulp-util": "^2.2.14"
   },
   "files": [
     "res",

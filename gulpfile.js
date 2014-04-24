@@ -3,6 +3,7 @@
 var gulp = require('gulp'),
     _ = require('lodash'),
     plugins = require('gulp-load-plugins')(),
+    runSequence = require('run-sequence'),
     externalPlugins = {
         durandal : require('./index')
     },
@@ -188,16 +189,20 @@ gulp.task('nodeunit', function(){
 });
 
 gulp.task('clean', function(){
-//    var stream = gulp.src('test/tmp', {read: false})
-//        .pipe(plugins.clean({force: true}));
-//
-//    return stream;
-//    cannot use gulp-clean here because of a bug where cleaning and rebuilding doesn't rewrite the rebuilt files.
+    var stream = gulp.src('test/tmp', {read: false})
+        .pipe(plugins.clean({force: true}));
+
+    return stream;
 });
 
 gulp.task('durandal', _.keys(testTasks));
 
-gulp.task('prepare', ['jshint', 'clean']);
-gulp.task('test', ['durandal', 'nodeunit']);
-
-gulp.task('default', ['prepare', 'test']);
+gulp.task('default', function(callback) {
+    runSequence(
+        'clean',
+        'jshint',
+        'durandal',
+        'nodeunit',
+        callback
+    );
+});
