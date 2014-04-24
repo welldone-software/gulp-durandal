@@ -16,6 +16,12 @@ var testOptions = {
     extraModules: ['plugins/widget', 'plugins/dialog', 'plugins/router', 'transitions/entrance']
 };
 
+function ignoreError(cb){
+    return function(err){
+        cb();
+    }
+}
+
 var generateTestTasks = function(){
     var tasks = {};
     var testGenerators = [];
@@ -165,7 +171,7 @@ var testTasks = generateTestTasks();
 _.each(testTasks, function(task, taskName){
     gulp.task(taskName, function(cb){
         externalPlugins.durandal(task)
-            .on('error', cb)
+            .on('error', ignoreError(cb))
             .pipe(plugins.print(function(filename){return taskName + ': ' + filename;}))
             .pipe(gulp.dest(outputDir + '/' + taskName))
             .on('end', cb);
