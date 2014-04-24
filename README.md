@@ -2,8 +2,6 @@
 
 > A [Gulp](http://gulpjs.com/) plugin for building [Durandal](http://durandaljs.com) projects.
 
->[Integrated](http://durandaljs.com/documentation/Gulp.html) into the official Durandal project.
-
 >Both scripts and views are compiled into a single output file.
 
 >No double maintenance of path mapping. Allows various code layouts (bower, app.net etc), using the paths already configured in your `main.js`.
@@ -17,6 +15,7 @@
 >}
 >```
 
+Also see the official [Durandal Gulp Plugin docs] (http://durandaljs.com/documentation/Gulp.html).
 ## Getting Started
 This plugin requires Gulp `~3.5.5`
 
@@ -195,7 +194,7 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
 ## Release History
  - 1.0.0 - Basic features, tests and samples in place. Deployed on [npm](https://www.npmjs.org/package/gulp-durandal).
  - 1.1.0 - Added rjsConfigAdapter option to allow full control over the config object passed to the rjs optimizer.
- - 1.1.1 - Improved plugin stream and fixed a bug in case of rjs error.
+ - 1.1.1 - More robust error handling to ensure `gulp.watch` continues to work even in case of rjs errors.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)
