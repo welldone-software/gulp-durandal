@@ -10,7 +10,7 @@
 
 >```js
 >gulp.task('durandal', function(){
->    durandal()
+>    return durandal()
 >       .pipe(gulp.dest('dir/to/save/the/output'));
 >}
 >```
