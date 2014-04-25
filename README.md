@@ -68,7 +68,9 @@ gulp.task('durandal-async', function(cb){
     durandal({
             ...
         })
-        .on('error', cb)
+        .on('error', function(err) {
+            console.error('error. ' + err);
+        })
         .pipe(gulp.dest('dir/to/save/the/output'))
         .on('end', cb);
 ```
@@ -195,6 +197,8 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
  - 1.0.0 - Basic features, tests and samples in place. Deployed on [npm](https://www.npmjs.org/package/gulp-durandal).
  - 1.1.0 - Added rjsConfigAdapter option to allow full control over the config object passed to the rjs optimizer.
  - 1.1.1 - More robust error handling to ensure `gulp.watch` continues to work even in case of rjs errors.
+ - 1.1.2 - Updated readme with useful links.
+ - 1.1.3 - Fixed documentation of callback process in documentation.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)
