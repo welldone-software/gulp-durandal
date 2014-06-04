@@ -146,6 +146,38 @@ var generateTestTasks = function(){
         });
     };
 
+    var cssRequireTest = function(tasks){
+        var testNum = 0;
+        _.each(testOptions.almond, function(almond){
+            testNum++;
+            var taskName = 'cssRequireTest' + testNum;
+            tasks[taskName] = {
+                baseDir: 'test/fixtures/Bower Project Css In App/app',
+                almond: almond
+            };
+        });
+    };
+
+    //TODO test of "main: null"
+//    var noMain = function(tasks){
+//        var taskName = 'noMain';
+//        tasks[taskName] = {
+//            baseDir: 'test/fixtures/Simple Bower Project/app',
+//            main: null
+//        };
+//    };
+
+    var excludeTest = function(tasks){
+        var taskName = 'excludeTest';
+        tasks[taskName] = {
+            baseDir: 'test/fixtures/Bower Project Css In App/app',
+            moduleFilter: function(m){
+                m = m ||'';
+                return m.lastIndexOf('css') + 3 != m.length;
+            }
+        };
+    };
+
     //comment out not needed tests
     testGenerators.push(simpleOutput);
     testGenerators.push(requireOutput);
@@ -154,6 +186,8 @@ var generateTestTasks = function(){
     testGenerators.push(pathTest);
     testGenerators.push(errorTest);
     testGenerators.push(adapterTest);
+    testGenerators.push(cssRequireTest);
+    testGenerators.push(excludeTest);
 
     _.each(testGenerators, function(generator){
         generator(tasks);

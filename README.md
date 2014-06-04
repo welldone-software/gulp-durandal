@@ -93,10 +93,10 @@ This directory is expected to contain all your views, viewmodels, service module
 
 
 #### options.main
-Type: `String`
+Type: `String|Boolean`
 Default value: `'main.js'`
 
-The path to the main js file of the application, relative to the baseDir.
+The path to the main js file of the application, relative to the baseDir, or `null` / `false` if main js file is not used.
 
 This is where we expect to find the project's `requirejs.config` call which defines all the path mapping for the external modules and libraries.
 
@@ -199,6 +199,8 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
  - 1.1.1 - More robust error handling to ensure `gulp.watch` continues to work even in case of rjs errors.
  - 1.1.2 - Updated readme with useful links.
  - 1.1.3 - Fixed documentation of callback process in documentation.
+ - 1.1.4 - Enable mapping file extensions to require.js plugins.
+         - Enable building packages without a main file.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)

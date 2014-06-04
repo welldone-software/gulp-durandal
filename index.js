@@ -24,7 +24,12 @@ var PLUGIN_NAME = 'gulp-durandaljs',
         rjsConfigAdapter : function(cfg){return cfg;},
         almond: false,
         moduleFilter: function(m){return true;},
-        textModuleExtensions : ['.json', '.html', '.txt']
+        pluginMap: {
+            '.html': 'text',
+            '.json': 'text',
+            '.txt': 'text',
+            '.css': 'css'
+        }
     };
 
 
@@ -35,7 +40,7 @@ module.exports = function gulpDurandaljs(userOptions){
 
         baseDir =  options.baseDir,
 
-        mainFile = path.join(baseDir, options.main),
+        mainFile = options.main ? path.join(baseDir, options.main) : undefined,
 
         almondWrapper = (function(){
             var almond = options.almond,
@@ -53,6 +58,11 @@ module.exports = function gulpDurandaljs(userOptions){
         })(),
 
         dynamicModules = (function(){
+            if(!mainFile){
+                return options.durandalDynamicModules ?
+                    [].concat(durandalDynamicPlugins, durandalDynamicTransitions) : [];
+            }
+
             var  mainFileContent = fs.readFileSync(mainFile, {encoding: 'utf-8'}),
                  plugins = mainFileContent.match(/['"]?plugins['"]?\s*:/) ? durandalDynamicPlugins : [],
                  transitions = mainFileContent.match(/['"]?transitions['"]?\s*:/) ? durandalDynamicTransitions : [];
@@ -64,23 +74,26 @@ module.exports = function gulpDurandaljs(userOptions){
             var stripExtension = function(p){ return p.substr(0, p.length - path.extname(p).length); },
                 expand = function(p){ return glob.sync(path.normalize(path.join(baseDir, p))); },
                 relativeToBaseDir = path.relative.bind(path, baseDir),
-                jsFiles = _.unique( _.flatten([ mainFile, expand('/**/*.js') ])),
+                jsFiles = (function() {
+                    var expandedJsFiles = _.flatten([ expand('/**/*.js') ]);
+                    return _.unique( mainFile ? [mainFile].concat(expandedJsFiles) : expandedJsFiles );
+                })(),
                 jsModules = jsFiles.map(relativeToBaseDir).map(stripExtension),
-                textFiles = _.flatten(_.map(options.textModuleExtensions, function(ext){return expand('/**/*'+ext);})),
-                textModules = textFiles.map(relativeToBaseDir).map(function(m){ return 'text!' + m; }),
-                scannedModules = {js: jsModules, text: textModules};
+                pluggedFiles = _.flatten( _.map( _.keys(options.pluginMap) , function(ext){return expand('/**/*'+ext);} ) ),
+                pluggedModules = pluggedFiles.map(relativeToBaseDir).map(function(m){ return options.pluginMap[path.extname(m)] + '!' + m; });
 
-            return scannedModules;
+            return {js: jsModules, plugged: pluggedModules};
         })(),
 
         allModules = (function(){
             var fixSlashes = function(p){ return p.replace(new RegExp('\\\\','g'),'/');},
                 modules =
-                    _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.text])
-                    .map(fixSlashes)
-                    .filter(options.moduleFilter);
+                    _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.plugged])
+                    .map(fixSlashes),
+                include = _.filter(modules, options.moduleFilter),
+                exclude = _.reject(modules, options.moduleFilter);
 
-            return _.unique(modules);
+            return { include:_.unique(include), exclude:_.unique(exclude) };
         })(),
 
         insertRequireModules = (function(){
@@ -88,7 +101,7 @@ module.exports = function gulpDurandaljs(userOptions){
                 return  _.flatten([options.require]);
             }
             else if(options.require === true || (options.almond && options.require !== false)){
-                return [allModules[0]];
+                return [allModules.include[0]];
             }
             return undefined;
         })(),
@@ -123,7 +136,8 @@ module.exports = function gulpDurandaljs(userOptions){
         logLevel: options.verbose ? 0 : 4,
         baseUrl : baseDir,
         mainConfigFile: mainFile,
-        include : allModules,
+        include: allModules.include,
+        exclude: allModules.exclude,
         out: rjsCb,
         optimize: options.minify ? 'uglify2' : 'none',
         preserveLicenseComments: !options.minify,
