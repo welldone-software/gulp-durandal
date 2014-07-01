@@ -53,7 +53,7 @@ gulp.task('durandal', function(){
     return durandal({
             baseDir: 'app',   //same as default, so not really required.
             main: 'main.js',  //same as default, so not really required.
-            output: 'main.js', //same as default, so not really required.
+            output: 'main-built.js',
             almond: true,
             minify: true
         })
