@@ -110,7 +110,7 @@ Type: `String`
 Default value: `path.basename(options.main)`
 
 Output js file's name.
-WARNING: Would overwrite existing file with same name.
+> WARNING: Would overwrite existing file with same name!
 
 #### options.minifiy
 Type: `Boolean`
