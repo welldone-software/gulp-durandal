@@ -51,9 +51,10 @@ var durandal = require('gulp-durandal');
 
 gulp.task('durandal', function(){
     return durandal({
-            baseDir: 'app',   //same as default, so not really required.
-            main: 'main.js',  //same as default, so not really required.
-            output: 'main.js', //same as default, so not really required.
+            baseDir: 'app',    //Same as default, so not really required.
+            main: 'main.js',   //Same as default, so not really required.
+            output: 'main.js', //Same as default, so not really required.
+                               //WARNING: Would overwrite existing file with same name.
             almond: true,
             minify: true
         })
@@ -109,6 +110,7 @@ Type: `String`
 Default value: `path.basename(options.main)`
 
 Output js file's name.
+WARNING: Would overwrite existing file with same name.
 
 #### options.minifiy
 Type: `Boolean`
@@ -201,6 +203,7 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
  - 1.1.3 - Fixed documentation of callback process in documentation.
  - 1.1.4 - Enable mapping file extensions to require.js plugins.
          - Enable building packages without a main file.
+ - 1.1.5 - Added warning about potential output file overwrite.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)
