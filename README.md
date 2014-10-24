@@ -202,7 +202,7 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
  - 1.1.2 - Updated readme with useful links.
  - 1.1.3 - Fixed documentation of callback process in documentation.
  - 1.1.4 - Enable mapping file extensions to require.js plugins.
-         - Enable building packages without a main file.
+ - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Enable building packages without a main file.
  - 1.1.5 - Added warning about potential input file overwrite.
 
 ## License
