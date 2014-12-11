@@ -16,6 +16,8 @@ var PLUGIN_NAME = 'gulp-durandaljs',
         baseDir: 'app',
         main: 'main.js',
         extraModules: [],
+        deepExclude: true,
+        generateSourceMaps: true,
         durandalDynamicModules: true,
         verbose : false,
         output: undefined,
@@ -91,7 +93,7 @@ module.exports = function gulpDurandaljs(userOptions){
                     _.flatten([scannedModules.js, options.extraModules || [], dynamicModules, scannedModules.plugged])
                     .map(fixSlashes),
                 include = _.filter(modules, options.moduleFilter),
-                exclude = _.reject(modules, options.moduleFilter);
+                exclude =  options.deepExclude ? _.reject(modules, options.moduleFilter) : [];
 
             return { include:_.unique(include), exclude:_.unique(exclude) };
         })(),
@@ -141,7 +143,7 @@ module.exports = function gulpDurandaljs(userOptions){
         out: rjsCb,
         optimize: options.minify ? 'uglify2' : 'none',
         preserveLicenseComments: !options.minify,
-        generateSourceMaps : true,
+        generateSourceMaps : options.generateSourceMaps,
         insertRequire : insertRequireModules,
         wrap: almondWrapper
     };
