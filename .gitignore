@@ -4,3 +4,4 @@ tmp
 
 .idea
 examples/dist/*
+test/reporting/*

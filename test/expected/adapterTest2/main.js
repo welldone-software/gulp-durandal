@@ -16584,4 +16584,3 @@ define('text!widgets/index.html',[],function () { return '<div>\r\n    <h1>Widge
 
 define('text!widgets/project.html',[],function () { return '<div>\r\n    <div data-bind="html: description"></div>\r\n</div>';});
 
-//# sourceMappingURL=main.js.map

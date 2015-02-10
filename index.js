@@ -111,7 +111,9 @@ module.exports = function gulpDurandaljs(userOptions){
             var output = options.output || path.basename(mainFile),
                 mapOutput = output + '.map';
 
-            text += '//# sourceMappingURL=' + path.basename(mapOutput);
+            if(sourceMapText){
+                text += '//# sourceMappingURL=' + path.basename(mapOutput);
+            }
 
             stream.write(new gutil.File({
                 path: output,

@@ -204,6 +204,8 @@ In lieu of a formal styleguide, take care to maintain the existing coding style.
  - 1.1.4 - Enable mapping file extensions to require.js plugins.
  - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Enable building packages without a main file.
  - 1.1.5 - Added warning about potential input file overwrite.
+ - 1.1.6 - Made [Nodeunit](https://github.com/caolan/nodeunit) report to a file.
+ - 1.1.7 - Fixed a bug where a source map comment on an output file was generated even when source maps was turned off.
 
 ## License
 [MIT](https://github.com/welldone-software/gulp-durandal/blob/master/LICENSE)

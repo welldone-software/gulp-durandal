@@ -217,7 +217,12 @@ gulp.task('jshint', function(){
 
 gulp.task('nodeunit', function(){
     var stream = gulp.src('test/*_test.js')
-        .pipe(plugins.nodeunit());
+        .pipe(plugins.nodeunit({
+            reporter: 'junit',
+            reporterOptions: {
+                output: 'test/reporting'
+            }
+        }));
 
     return stream;
 });
