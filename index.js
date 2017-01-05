@@ -111,7 +111,10 @@ module.exports = function gulpDurandaljs(userOptions){
             var output = options.output || path.basename(mainFile),
                 mapOutput = output + '.map';
 
-            if(sourceMapText){
+            if (sourceMapText) {
+                //Awaiting fix of https://github.com/jrburke/r.js/issues/802
+                text = text.replace(/\n\/\/# sourceMappingURL=.+?$/, '');
+
                 text += '//# sourceMappingURL=' + path.basename(mapOutput);
             }
 
