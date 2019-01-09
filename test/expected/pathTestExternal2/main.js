@@ -416,7 +416,8 @@ var requirejs, require, define;
     define.amd = {
         jQuery: true
     };
-}());/*!
+}());
+/*!
  * jQuery JavaScript Library v1.9.1
  * http://jquery.com/
  *
@@ -435,7 +436,7 @@ var requirejs, require, define;
 // the stack via arguments.caller.callee and Firefox dies if
 // you try to trace through "use strict" call chains. (#13335)
 // Support: Firefox 18+
-//
+//"use strict";
 var
 	// The deferred used on DOM ready
 	readyList,
@@ -15195,7 +15196,7 @@ define('plugins/widget',['durandal/system', 'durandal/composition', 'jquery', 'k
   java: false, location: false */
 
 define('text',['module'], function (module) {
-    
+    'use strict';
 
     var text, fs,
         progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'],
@@ -15494,8 +15495,9 @@ define('text',['module'], function (module) {
 });
 
 
-define('text!shell.html',[],function () { return '<section>\r\n    <h2>Hello! What is your name?</h2>\r\n    <form class="form-inline">\r\n        <fieldset>\r\n            <label>Name</label>\r\n            <input type="text" data-bind="value: name, valueUpdate: \'afterkeydown\'"/>\r\n            <button type="submit" class="btn" data-bind="click: sayHello, enable: name">Click Me</button>\r\n        </fieldset>\r\n    </form>\r\n</section>';});
+define('text!shell.html',[],function () { return '<section>\n    <h2>Hello! What is your name?</h2>\n    <form class="form-inline">\n        <fieldset>\n            <label>Name</label>\n            <input type="text" data-bind="value: name, valueUpdate: \'afterkeydown\'"/>\n            <button type="submit" class="btn" data-bind="click: sayHello, enable: name">Click Me</button>\n        </fieldset>\n    </form>\n</section>';});
 
 
 require(["main"]);
-}());//# sourceMappingURL=main.js.map
+}());
+//# sourceMappingURL=main.js.map

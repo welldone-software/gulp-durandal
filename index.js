@@ -4,7 +4,10 @@ var fs = require('fs'),
     es = require('event-stream'),
     glob = require('glob'),
     _ = require('lodash')._,
-    gutil = require('gulp-util');
+    vinyl = require('vinyl'),
+    PluginError = require('plugin-error'),
+    log = require('fancy-log'),
+    c = require('ansi-colors');
 
 var PLUGIN_NAME = 'gulp-durandaljs',
 
@@ -76,7 +79,7 @@ module.exports = function gulpDurandaljs(userOptions){
                 relativeToBaseDir = path.relative.bind(path, baseDir),
                 jsFiles = (function() {
                     var expandedJsFiles = _.flatten([ expand('/**/*.js') ]);
-                    return _.unique( mainFile ? [mainFile].concat(expandedJsFiles) : expandedJsFiles );
+                    return _.uniq( mainFile ? [mainFile].concat(expandedJsFiles) : expandedJsFiles );
                 })(),
                 jsModules = jsFiles.map(relativeToBaseDir).map(stripExtension),
                 pluggedFiles = _.flatten( _.map( _.keys(options.pluginMap) , function(ext){return expand('/**/*'+ext);} ) ),
@@ -93,7 +96,7 @@ module.exports = function gulpDurandaljs(userOptions){
                 include = _.filter(modules, options.moduleFilter),
                 exclude = _.reject(modules, options.moduleFilter);
 
-            return { include:_.unique(include), exclude:_.unique(exclude) };
+            return { include:_.uniq(include), exclude:_.uniq(exclude) };
         })(),
 
         insertRequireModules = (function(){
@@ -115,13 +118,13 @@ module.exports = function gulpDurandaljs(userOptions){
                 text += '//# sourceMappingURL=' + path.basename(mapOutput);
             }
 
-            stream.write(new gutil.File({
+            stream.write(new vinyl({
                 path: output,
                 contents: new Buffer(text)
             }));
 
             if(sourceMapText){
-                stream.write(new gutil.File({
+                stream.write(new vinyl({
                     path: mapOutput,
                     contents: new Buffer(sourceMapText)
                 }));
@@ -131,7 +134,7 @@ module.exports = function gulpDurandaljs(userOptions){
         },
         
         errCb = function(err){
-            stream.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
+            stream.emit('error', new PluginError(PLUGIN_NAME, err));
         };
 
     var rjsConfig = {
@@ -153,7 +156,7 @@ module.exports = function gulpDurandaljs(userOptions){
     requirejs.optimize(rjsConfig, null, errCb);
 
     stream.on('error', function(e){
-        gutil.log('Durandal ' + gutil.colors.red(e.message));
+        log('Durandal ' + c.red(e.message));
         stream.end();
     });
     

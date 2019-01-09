@@ -3,7 +3,8 @@
 var gulp = require('gulp'),
     _ = require('lodash'),
     plugins = require('gulp-load-plugins')(),
-    runSequence = require('run-sequence'),
+    print = require('gulp-print').default,
+    del = require('del'),
     externalPlugins = {
         durandal : require('./index')
     },
@@ -200,7 +201,7 @@ var testTasks = generateTestTasks();
 _.each(testTasks, function(task, taskName){
     gulp.task(taskName, function(){
         return externalPlugins.durandal(task)
-            .pipe(plugins.print(function(filename){return taskName + ': ' + filename;}))
+            .pipe(print(function(filename){return taskName + ': ' + filename;}))
             .pipe(gulp.dest(outputDir + '/' + taskName));
     });
 });
@@ -228,20 +229,13 @@ gulp.task('nodeunit', function(){
 });
 
 gulp.task('clean', function(){
-    var stream = gulp.src('test/tmp', {read: false})
-        .pipe(plugins.clean({force: true}));
-
-    return stream;
+    return del('test/tmp');
 });
 
-gulp.task('durandal', _.keys(testTasks));
+gulp.task('durandal', gulp.series(_.keys(testTasks)));
 
-gulp.task('default', function(callback) {
-    runSequence(
+gulp.task('default', gulp.series(
         'clean',
         'jshint',
         'durandal',
-        'nodeunit',
-        callback
-    );
-});
+        'nodeunit'));
