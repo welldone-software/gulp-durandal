@@ -39,7 +39,7 @@
     "run-sequence": "^0.3.6"
   },
   "dependencies": {
-    "lodash": "^2.4.1",
+    "lodash": "^4.17.15",
     "requirejs": "^2.1.11",
     "glob": "^3.2.9",
     "event-stream": "^3.1.0",
