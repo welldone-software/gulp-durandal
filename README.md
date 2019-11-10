@@ -1,3 +1,8 @@
+> **Deprecation warning**
+> This repo is archived and no longer maintained!
+
+
+
 # gulp-durandal
 
 > A [Gulp](http://gulpjs.com/) plugin for building [Durandal](http://durandaljs.com) projects.
