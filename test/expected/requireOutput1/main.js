@@ -17,7 +17,7 @@
 // the stack via arguments.caller.callee and Firefox dies if
 // you try to trace through "use strict" call chains. (#13335)
 // Support: Firefox 18+
-//
+//"use strict";
 var
 	// The deferred used on DOM ready
 	readyList,
@@ -14935,7 +14935,7 @@ define('plugins/serializer',['durandal/system'], function(system) {
   java, location, Components, FileUtils */
 
 define('text',['module'], function (module) {
-    
+    'use strict';
 
     var text, fs, Cc, Ci,
         progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'],
@@ -15298,16 +15298,16 @@ define('text',['module'], function (module) {
     return text;
 });
 
-define('text!views/detail.html',[],function () { return '<div class="messageBox autoclose" style="max-width: 425px">\r\n    <div class="modal-header">\r\n        <h3>Details</h3>\r\n    </div>\r\n    <div class="modal-body">\r\n        <p data-bind="html: description"></p>\r\n    </div>\r\n</div>';});
+define('text!views/detail.html',[],function () { return '<div class="messageBox autoclose" style="max-width: 425px">\n    <div class="modal-header">\n        <h3>Details</h3>\n    </div>\n    <div class="modal-body">\n        <p data-bind="html: description"></p>\n    </div>\n</div>';});
 
 
-define('text!views/flickr.html',[],function () { return '<section>\r\n    <h2 data-bind="html: displayName"></h2>\r\n    <div class="row-fluid">\r\n        <ul class="thumbnails" data-bind="foreach: images">\r\n            <li>\r\n                <a href="#" class="thumbnail" data-bind="click:$parent.select">\r\n                    <img style="width: 260px; height: 180px;" data-bind="attr: { src: media.m }"/>\r\n                </a>\r\n            </li>\r\n        </ul>\r\n    </div>\r\n</section>';});
+define('text!views/flickr.html',[],function () { return '<section>\n    <h2 data-bind="html: displayName"></h2>\n    <div class="row-fluid">\n        <ul class="thumbnails" data-bind="foreach: images">\n            <li>\n                <a href="#" class="thumbnail" data-bind="click:$parent.select">\n                    <img style="width: 260px; height: 180px;" data-bind="attr: { src: media.m }"/>\n                </a>\n            </li>\n        </ul>\n    </div>\n</section>';});
 
 
-define('text!views/shell.html',[],function () { return '<div>\r\n    <div class="navbar navbar-fixed-top">\r\n        <div class="navbar-inner">\r\n            <a class="brand" data-bind="attr: { href: router.navigationModel()[0].hash }">\r\n                <i class="icon-home"></i>\r\n                <span>Durandal</span>\r\n            </a>\r\n            <ul class="nav" data-bind="foreach: router.navigationModel">\r\n                <li data-bind="css: { active: isActive }">\r\n                    <a data-bind="attr: { href: hash }, html: title"></a>\r\n                </li>\r\n            </ul>\r\n            <div class="loader pull-right" data-bind="css: { active: router.isNavigating }">\r\n                <i class="icon-spinner icon-2x icon-spin"></i>\r\n            </div>\r\n            <form class="navbar-search pull-right" data-bind="submit:search">\r\n                <input type="text" class="search-query" placeholder="Search">\r\n            </form>\r\n        </div>\r\n    </div>\r\n    \r\n    <div class="container-fluid page-host" data-bind="router: { transition:\'entrance\', cacheViews:true }"></div>\r\n</div>';});
+define('text!views/shell.html',[],function () { return '<div>\n    <div class="navbar navbar-fixed-top">\n        <div class="navbar-inner">\n            <a class="brand" data-bind="attr: { href: router.navigationModel()[0].hash }">\n                <i class="icon-home"></i>\n                <span>Durandal</span>\n            </a>\n            <ul class="nav" data-bind="foreach: router.navigationModel">\n                <li data-bind="css: { active: isActive }">\n                    <a data-bind="attr: { href: hash }, html: title"></a>\n                </li>\n            </ul>\n            <div class="loader pull-right" data-bind="css: { active: router.isNavigating }">\n                <i class="icon-spinner icon-2x icon-spin"></i>\n            </div>\n            <form class="navbar-search pull-right" data-bind="submit:search">\n                <input type="text" class="search-query" placeholder="Search">\n            </form>\n        </div>\n    </div>\n    \n    <div class="container-fluid page-host" data-bind="router: { transition:\'entrance\', cacheViews:true }"></div>\n</div>';});
 
 
-define('text!views/welcome.html',[],function () { return '<section>\r\n    <h2 data-bind="html:displayName"></h2>\r\n    <blockquote data-bind="html:description"></blockquote>\r\n    <h3>Features</h3>\r\n    <ul data-bind="foreach: features">\r\n        <li data-bind="html: $data"></li>\r\n    </ul>\r\n    <div class="alert alert-success">\r\n      <h4>Read Me Please</h4>\r\n        For information about this template and for general documenation please visit <a href="http://www.durandaljs.com">the official site</a> and if you can\'t find \r\n        answers to your questions there, we hope you will join our <a href="https://groups.google.com/forum/?fromgroups#!forum/durandaljs">google group</a>.\r\n    </div>\r\n</section>';});
+define('text!views/welcome.html',[],function () { return '<section>\n    <h2 data-bind="html:displayName"></h2>\n    <blockquote data-bind="html:description"></blockquote>\n    <h3>Features</h3>\n    <ul data-bind="foreach: features">\n        <li data-bind="html: $data"></li>\n    </ul>\n    <div class="alert alert-success">\n      <h4>Read Me Please</h4>\n        For information about this template and for general documenation please visit <a href="http://www.durandaljs.com">the official site</a> and if you can\'t find \n        answers to your questions there, we hope you will join our <a href="https://groups.google.com/forum/?fromgroups#!forum/durandaljs">google group</a>.\n    </div>\n</section>';});
 
 
 require(["main"]);
